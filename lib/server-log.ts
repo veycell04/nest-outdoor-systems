@@ -9,6 +9,8 @@ type FailureDetails = {
   error: unknown;
   providerCode?: string | null;
   providerRequestId?: string | null;
+  originalStack?: string | null;
+  componentStack?: string | null;
 };
 
 const SAFE_MAX = 300;
@@ -42,9 +44,11 @@ export function logFailure(details: FailureDetails) {
     error: sanitizeError(details.error),
     providerCode: details.providerCode || null,
     providerRequestId: details.providerRequestId || null,
+    clientStack: details.originalStack ? redact(details.originalStack).slice(0, 8000) : null,
+    componentStack: details.componentStack ? redact(details.componentStack).slice(0, 8000) : null,
   };
   console.error(JSON.stringify(event));
-  if (details.error instanceof Error && details.error.stack) console.error(`[${details.requestId}] server stack`, redact(details.error.stack));
+  if (details.stage !== "client_render" && details.error instanceof Error && details.error.stack) console.error(`[${details.requestId}] server stack`, redact(details.error.stack));
   return event;
 }
 

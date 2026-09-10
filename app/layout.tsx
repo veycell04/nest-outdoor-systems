@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClientErrorBoundary } from "../components/client-error-boundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-US">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><ClientErrorBoundary>{children}</ClientErrorBoundary></body>
     </html>
   );
 }

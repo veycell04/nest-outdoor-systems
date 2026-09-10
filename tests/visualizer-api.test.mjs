@@ -71,3 +71,17 @@ test("structured logs redact credentials, images, and contact details",async()=>
   try{logFailure({requestId:"controlled-log-test",stage:"image_generation",productId:"awning",startedAt:Date.now()-12,status:502,error:new Error("Bearer secret-token sk-test123 customer@example.com +1 312 555 0100 data:image/png;base64,AAAA"),providerCode:"provider_test",providerRequestId:"req_provider_123"})}finally{console.error=original}
   const event=JSON.parse(lines[0]);assert.equal(event.requestId,"controlled-log-test");assert.equal(event.stage,"image_generation");assert.equal(event.productId,"awning");assert.equal(event.httpStatus,502);assert.equal(event.providerCode,"provider_test");assert.equal(event.providerRequestId,"req_provider_123");assert.doesNotMatch(lines.join("\n"),/secret-token|sk-test123|customer@example|312 555|base64,AAAA/);assert.match(lines[1],/server stack/);
 });
+
+test("pointer coordinates are captured without retaining the React event",async()=>{
+  const {mapPointerToCanvas}=await vite.ssrLoadModule("/app/project-visualizer.tsx");
+  const canvas={isConnected:true,width:1000,height:500,getBoundingClientRect(){return{left:10,top:20,width:500,height:250}}};
+  assert.deepEqual(mapPointerToCanvas(canvas,260,145),{x:500,y:250});
+  assert.equal(mapPointerToCanvas(null,0,0),null);
+  assert.equal(mapPointerToCanvas({...canvas,getBoundingClientRect(){return{left:0,top:0,width:0,height:250}}},0,0),null);
+});
+
+test("client render logs retain sanitized original and component stacks",async()=>{
+  const {logFailure}=await vite.ssrLoadModule("/lib/server-log.ts"),lines=[],original=console.error;console.error=(...args)=>lines.push(args.join(" "));
+  try{logFailure({requestId:"client-stack-test",stage:"client_render",startedAt:Date.now(),status:500,error:"render failed",originalStack:"Error: user@example.com\n at Visualizer (app.js:1)",componentStack:"at ProjectVisualizer (+1 312 555 0100)"})}finally{console.error=original}
+  assert.equal(lines.length,1);const event=JSON.parse(lines[0]);assert.match(event.clientStack,/Visualizer/);assert.match(event.componentStack,/ProjectVisualizer/);assert.doesNotMatch(lines[0],/user@example|312 555/);
+});
