@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NEST Outdoor Systems | Custom Pergolas",
-  description: "Custom pergolas, retractable roofs, ZIP screens and glass outdoor enclosures. Share your project details and receive a preliminary installed budget from NEST Outdoor Systems.",
+  description: "Upload a photo of your home and visualize a custom pergola, retractable roof, ZIP screen or glass enclosure before it is built.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

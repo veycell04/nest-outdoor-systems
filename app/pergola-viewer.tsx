@@ -12,13 +12,14 @@ type PergolaViewerProps = {
   color: string;
   lighting: boolean;
   screens: boolean;
+  presentation?: "studio" | "overlay";
 };
 
 function Box({ position, scale, color, emissive }: { position: [number, number, number]; scale: [number, number, number]; color: string; emissive?: string }) {
   return <mesh position={position} scale={scale} castShadow receiveShadow><boxGeometry /><meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={emissive ? 2.2 : 0} roughness={0.36} metalness={0.72} /></mesh>;
 }
 
-function PergolaModel({ product, width, depth, attached, roofOpen, color, lighting, screens }: PergolaViewerProps) {
+export function PergolaModel({ product, width, depth, attached, roofOpen, color, lighting, screens, presentation = "studio" }: PergolaViewerProps) {
   const w = Math.min(8.4, Math.max(4.8, width / 2.25));
   const d = Math.min(7.2, Math.max(3.8, depth / 2.5));
   const h = 3.7;
@@ -28,21 +29,21 @@ function PergolaModel({ product, width, depth, attached, roofOpen, color, lighti
   const louverAngle = (roofOpen / 100) * Math.PI * 0.42;
 
   if (product === "umbrella") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     <mesh position={[0, 2.1, 0]} castShadow><cylinderGeometry args={[.1, .14, 4.1, 24]} /><meshStandardMaterial color={color} metalness={.75} roughness={.32} /></mesh>
     <mesh position={[0, 4.05, 0]} castShadow rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[Math.min(w, d) * .6, .85, 8, 1, true]} /><meshStandardMaterial color="#d8c5aa" side={2} roughness={.8} /></mesh>
     <ContactShadows position={[0, .05, 0]} opacity={.3} scale={18} blur={2.5} far={8} />
   </group>;
 
   if (product === "zip") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     <Box position={[-w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} /><Box position={[w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[0, h, 0]} scale={[w + beam, .34, .34]} color={color} />
     <mesh position={[0, h / 2, .02]} castShadow><planeGeometry args={[w - .32, h - .35]} /><meshStandardMaterial color="#676c69" transparent opacity={.68} roughness={1} /></mesh>
   </group>;
 
   if (product === "guillotine") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     <Box position={[-w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[0, h, 0]} scale={[w + beam, .28, .28]} color={color} />
@@ -55,7 +56,7 @@ function PergolaModel({ product, width, depth, attached, roofOpen, color, lighti
   </group>;
 
   if (product === "sliding_glass") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     <Box position={[-w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[0, h, 0]} scale={[w + beam, .24, .28]} color={color} />
@@ -67,7 +68,7 @@ function PergolaModel({ product, width, depth, attached, roofOpen, color, lighti
   </group>;
 
   if (product === "ceiling_zip") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     {[[-w/2,d/2],[w/2,d/2],[-w/2,-d/2],[w/2,-d/2]].map(([x,z],i)=><Box key={i} position={[x,h/2,z]} scale={[beam,h,beam]} color={color}/>)}
     <Box position={[0,h,d/2]} scale={[w+beam,beam,beam]} color={color}/><Box position={[0,h,-d/2]} scale={[w+beam,beam,beam]} color={color}/>
     <Box position={[-w/2,h,0]} scale={[beam,beam,d]} color={color}/><Box position={[w/2,h,0]} scale={[beam,beam,d]} color={color}/>
@@ -75,19 +76,19 @@ function PergolaModel({ product, width, depth, attached, roofOpen, color, lighti
   </group>;
 
   if (product === "awning") return <group position={[0, .05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" /><Box position={[0, h / 2, -d / 2]} scale={[w + 1, h, .2]} color="#ddd7cc" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}{presentation === "studio" && <Box position={[0, h / 2, -d / 2]} scale={[w + 1, h, .2]} color="#ddd7cc" />}
     <Box position={[0, h, -d / 2 + .12]} scale={[w, .34, .34]} color={color} />
     <mesh position={[0, h - .25, 0]} rotation={[-.08, 0, 0]} castShadow><boxGeometry args={[w, .06, d]} /><meshStandardMaterial color="#d8c5aa" roughness={.85} /></mesh>
     <Box position={[-w / 2 + .2, h - .65, 0]} scale={[.09, .09, d]} color={color} /><Box position={[w / 2 - .2, h - .65, 0]} scale={[.09, .09, d]} color={color} />
   </group>;
 
   return <group position={[0, 0.05, 0]}>
-    <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />
+    {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     {posts.map((x, i) => {
       const z = attached ? d / 2 : (i < 2 ? d / 2 : -d / 2);
       return <Box key={`${x}-${i}`} position={[x, h / 2, z]} scale={[beam, h, beam]} color={color} />;
     })}
-    {attached && <Box position={[0, h / 2, -d / 2 - .13]} scale={[w + .5, h, .18]} color="#ddd7cc" />}
+    {attached && presentation === "studio" && <Box position={[0, h / 2, -d / 2 - .13]} scale={[w + .5, h, .18]} color="#ddd7cc" />}
     <Box position={[0, h, d / 2]} scale={[w + beam, beam, beam]} color={color} />
     <Box position={[0, h, -d / 2]} scale={[w + beam, beam, beam]} color={color} />
     <Box position={[-w / 2, h, 0]} scale={[beam, beam, d]} color={color} />

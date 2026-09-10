@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, ChevronDown, ImagePlus, Menu, Ruler, Sparkles, X } from "lucide-react";
 import { PergolaViewer } from "./pergola-viewer";
+import { ProjectVisualizer } from "./project-visualizer";
 import { pricedSystems } from "./pricing";
 
 const systems = [
@@ -59,6 +60,7 @@ export default function Home() {
         <a className="brand" href="#top" aria-label="NEST Outdoor Systems home"><img src="/brand/nest-outdoor-systems-final.png" alt="NEST Outdoor Systems"/></a>
         <nav className={menu ? "nav-links open" : "nav-links"} aria-label="Primary navigation">
           <a href="#systems" onClick={() => setMenu(false)}>Systems</a>
+          <a href="#visualize" onClick={() => setMenu(false)}>Visualizer</a>
           <a href="#process" onClick={() => setMenu(false)}>Process</a>
           <a href="#estimate" onClick={() => setMenu(false)}>Project budget</a>
         </nav>
@@ -74,12 +76,14 @@ export default function Home() {
           <h1>Architecture that<br/><em>opens to the sky.</em></h1>
           <p className="hero-copy">Custom pergolas and outdoor enclosure systems, engineered around your home and the way you want to live.</p>
           <div className="hero-actions">
-            <a className="button light" href="#estimate">Plan your project <ArrowRight size={18} /></a>
+            <a className="button light" href="#visualize">Visualize your space <ArrowRight size={18} /></a>
             <a className="text-link" href="#systems">Explore our systems <ArrowRight size={17} /></a>
           </div>
         </div>
         <div className="hero-note"><span>01</span><div><strong>Tailored to your space</strong><small>Residential · Hospitality · Commercial</small></div></div>
       </section>
+
+      <ProjectVisualizer onRequestProject={(systemId) => { setSystem(systemId); document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" }); }} />
 
       <section className="showcase-section section" aria-labelledby="showcase-title">
         <div className="showcase-copy">
@@ -133,8 +137,8 @@ export default function Home() {
         <div className="process-heading"><p className="eyebrow"><span /> Simple by design</p><h2>From a photograph<br/>to a finished space.</h2></div>
         <div className="steps">
           <article><span>01</span><ImagePlus/><h3>Share your space</h3><p>Add a photo, approximate dimensions, or simply your contact details.</p></article>
-          <article><span>02</span><Ruler/><h3>Configure your system</h3><p>Choose the roof, structure and comfort options you prefer.</p></article>
-          <article><span>03</span><Sparkles/><h3>Receive your project budget</h3><p>We review your details, then prepare your preliminary installed budget.</p></article>
+          <article><span>02</span><Ruler/><h3>Place your system</h3><p>Choose a product, finish and angle, then fit it over your project area.</p></article>
+          <article><span>03</span><Sparkles/><h3>Refine it with a designer</h3><p>Send your concept to our team for measurements, engineering and a project proposal.</p></article>
         </div>
         <aside className="permit-note">
           <p>Permit support</p>
