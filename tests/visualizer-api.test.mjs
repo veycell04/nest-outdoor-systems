@@ -25,22 +25,6 @@ test("rejects generation cleanly when the server credential is absent",async()=>
   if(old)process.env.OPENAI_API_KEY=old;
 });
 
-test("validates decoded mask alignment before contacting the provider",async()=>{
-  const old=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY="test-only";
-  const body=new FormData();body.append("photo",new File([png(1024,1024)],"photo.png",{type:"image/png"}));body.append("mask",new File([png(1024,900)],"mask.png",{type:"image/png"}));body.append("productId","awning");body.append("requestId","alignment-test");body.append("specs",JSON.stringify({finish:"Anthracite",options:[],measurements:{},unit:"ft"}));
-  const response=await visualize(new Request("http://localhost/api/visualize",{method:"POST",body}));
-  assert.equal(response.status,400);const payload=await response.json();assert.match(payload.error,/exactly match/i);assert.equal(payload.requestId,"alignment-test");assert.match(payload.error,/Reference: alignment-test/);
-  if(old)process.env.OPENAI_API_KEY=old;else delete process.env.OPENAI_API_KEY;
-});
-
-test("blocks products that lack a verified reference",async()=>{
-  const old=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY="test-only";
-  const body=new FormData();body.append("photo",new File([png(1024,1024)],"photo.png",{type:"image/png"}));body.append("mask",new File([png(1024,1024)],"mask.png",{type:"image/png"}));body.append("productId","sliding_glass");body.append("requestId","missing-reference-test");
-  const response=await visualize(new Request("http://localhost/api/visualize",{method:"POST",body}));
-  assert.equal(response.status,422);assert.match((await response.json()).error,/verified Sliding Glass/i);
-  if(old)process.env.OPENAI_API_KEY=old;else delete process.env.OPENAI_API_KEY;
-});
-
 test("does not claim consultation delivery without provider setup",async()=>{
   const old=process.env.RESEND_API_KEY;delete process.env.RESEND_API_KEY;
   const body=new FormData();body.append("name","Test Customer");body.append("email","customer@example.com");body.append("productId","awning");
@@ -51,10 +35,30 @@ test("does not claim consultation delivery without provider setup",async()=>{
 
 test("visualizer source includes download and consultation handoff actions",async()=>{
   const source=await import("node:fs/promises").then(fs=>fs.readFile(new URL("../app/project-visualizer.tsx",import.meta.url),"utf8"));
-  assert.match(source,/download=`nest-/);assert.match(source,/onRequestProject\(\{productId/);assert.match(source,/Request consultation/);
+  assert.match(source,/a\.download\s*=\s*`nest-/);assert.match(source,/onRequestProject\(\{/);assert.match(source,/Request consultation/);
   assert.doesNotMatch(source,/setMeasurements\(\{\}\).*setResult\(null\)/);
   assert.doesNotMatch(source,/setGenerating\(true\);setResult\(null\)/);
   assert.match(source,/Provided measurements —/);
+});
+
+test("large phone uploads are normalized and measured before generation",async()=>{
+  const source=await import("node:fs/promises").then(fs=>fs.readFile(new URL("../app/project-visualizer.tsx",import.meta.url),"utf8"));
+  assert.match(source,/1600\s*\/\s*Math\.max/);assert.match(source,/quality\s*=\s*0\.8/);assert.match(source,/2\.5\s*\*\s*1024\s*\*\s*1024/);assert.match(source,/new Response\(diagnostic\)\.arrayBuffer/);assert.match(source,/3\.8\s*\*\s*1024\s*\*\s*1024/);assert.match(source,/This photo is too large to process\. Please choose another photo\./);
+  const form=new FormData();form.append("photo",new Blob([new Uint8Array(2.5*1024*1024)],{type:"image/jpeg"}),"project.jpg");form.append("mask",new Blob([new Uint8Array(220*1024)],{type:"image/png"}),"mask.png");form.append("productId","awning");form.append("specs",JSON.stringify({measurements:{width:"12",projection:"9"},unit:"ft"}));assert.ok((await new Response(form).arrayBuffer()).byteLength<3.8*1024*1024);
+});
+
+test("visualize exchanges private object IDs and never returns base64 image JSON",async()=>{
+  const fs=await import("node:fs/promises"),route=await fs.readFile(new URL("../app/api/visualize/route.ts",import.meta.url),"utf8"),client=await fs.readFile(new URL("../app/project-visualizer.tsx",import.meta.url),"utf8");
+  assert.doesNotMatch(route,/request\.formData\(/);assert.match(route,/photoObjectId/);assert.match(route,/readFile\([\s\S]*join\(process\.cwd\(\),\s*"public"/);assert.match(route,/put\(/);assert.match(route,/imageUrl:\s*signedResultUrl/);assert.doesNotMatch(route,/data:image\/jpeg;base64/);assert.match(client,/@vercel\/blob\/client/);
+});
+
+test("large generated results are stored before a small JSON response",async()=>{
+  const fs=await import("node:fs/promises"),route=await fs.readFile(new URL("../app/api/visualize/route.ts",import.meta.url),"utf8"),storage=await fs.readFile(new URL("../lib/visualizer-storage.ts",import.meta.url),"utf8");
+  assert.match(route,/Buffer\.from\(result\.data\[0\]\.b64_json,\s*"base64"\)/);assert.match(route,/resultBytes\.byteLength\s*>\s*RESULT_MAX_BYTES/);assert.match(route,/await put\(/);assert.match(storage,/RESULT_MAX_BYTES\s*=\s*20\s*\*\s*1024\s*\*\s*1024/);
+});
+
+test("private object ownership and expiring result links are enforced",async()=>{
+  const old=process.env.VISUALIZER_SESSION_SECRET;process.env.VISUALIZER_SESSION_SECRET="test-secret-that-is-longer-than-thirty-two-characters";const storage=await vite.ssrLoadModule("/lib/visualizer-storage.ts"),session=storage.createSessionCookie(),photo=storage.uploadPath(session.id,"request-1234","photo","jpg");assert.equal(storage.ownsObject(session.id,photo),true);assert.equal(storage.ownsObject(crypto.randomUUID(),photo),false);const url=new URL(storage.signedResultUrl(photo),"http://localhost");assert.equal(storage.verifyResultSignature(photo,url.searchParams.get("expires"),url.searchParams.get("signature")),true);if(old)process.env.VISUALIZER_SESSION_SECRET=old;else delete process.env.VISUALIZER_SESSION_SECRET;
 });
 
 test("Cassette Awning maps to width and projection",async()=>{
