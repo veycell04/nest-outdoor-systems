@@ -1,14 +1,12 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Check, ChevronDown, ImagePlus, Menu, Ruler, Sparkles, X } from "lucide-react";
 import { PergolaViewer } from "./pergola-viewer";
-import { ProjectVisualizer } from "./project-visualizer";
-import { pricedSystems } from "./pricing";
+import { ProjectVisualizer, type VisualizerHandoff } from "./project-visualizer";
+import { products } from "../lib/products";
 
-const systems = [
-  ...pricedSystems.map((item) => item.id === "awning" ? { ...item, label: "Full Cassette Awning" } : item),
-];
+const systems = products;
 
 const projects = [
   { image: "/projects/elevated-pergola.jpeg", title: "Classic PVC Pergola", type: "Retractable Roof", system: "pvc" },
@@ -31,6 +29,9 @@ export default function Home() {
   const [roofOpen, setRoofOpen] = useState(35);
   const [frameColor, setFrameColor] = useState("#303332");
   const [fileName, setFileName] = useState("");
+  const [projectContext, setProjectContext] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const usesOpeningHeight = system === "zip" || system === "guillotine" || system === "sliding_glass";
   const secondDimensionLabel = usesOpeningHeight ? "Height" : system === "umbrella" ? "Length" : "Projection";
   const needsThirdDimension = !usesOpeningHeight && system !== "awning";
@@ -38,20 +39,19 @@ export default function Home() {
   const viewerWidth = typeof width === "number" ? width : 12;
   const viewerDepth = typeof depth === "number" ? depth : 16;
 
-  const handleContactSubmit = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => { const saved=sessionStorage.getItem("nest-consultation"); if(saved)setProjectContext(saved); }, []);
+
+  const acceptHandoff = (handoff: VisualizerHandoff) => {
+    setSystem(handoff.productId);
+    setProjectContext(handoff.context);
+    sessionStorage.setItem("nest-consultation", handoff.context);
+  };
+
+  const handleContactSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const subject = encodeURIComponent(`U.S. project inquiry — ${selectedSystem.label}`);
-    const body = encodeURIComponent([
-      `Name: ${data.get("name")}`,
-      `Email: ${data.get("email")}`,
-      `Phone: ${data.get("phone") || "Not provided"}`,
-      `Project ZIP code: ${data.get("zip") || "Not provided"}`,
-      `Interested in: ${selectedSystem.label}`,
-      `Dimensions: ${width || "Unknown"} ft wide × ${depth || "Unknown"} ft ${secondDimensionLabel.toLowerCase()}${height ? ` × ${height} ft high` : ""}`,
-      `Message: ${data.get("message") || "No additional details"}`,
-    ].join("\n"));
-    window.location.href = `mailto:hello@nestpergola.com?subject=${subject}&body=${body}`;
+    const form=event.currentTarget,data=new FormData(form);data.append("productId",system);data.append("projectContext",projectContext||[`Product: ${selectedSystem.label}`,`Provided measurements: ${width||"Unknown"} ft width, ${depth||"Unknown"} ft ${secondDimensionLabel.toLowerCase()}${height?`, ${height} ft height`:""}`].join("\n"));
+    setSubmitting(true);setContactStatus("Sending your inquiry…");
+    try{const response=await fetch("/api/consultation",{method:"POST",body:data}),payload=await response.json();if(!response.ok)throw new Error(payload.error||"Inquiry not accepted.");setContactStatus("Your inquiry was accepted. Our design team will follow up by email.");form.reset();setProjectContext("");sessionStorage.removeItem("nest-consultation")}catch(error){setContactStatus(error instanceof Error?error.message:"Your inquiry was not sent. Please email hello@nestpergola.com.")}finally{setSubmitting(false)}
   };
 
   return (
@@ -83,7 +83,7 @@ export default function Home() {
         <div className="hero-note"><span>01</span><div><strong>Tailored to your space</strong><small>Residential · Hospitality · Commercial</small></div></div>
       </section>
 
-      <ProjectVisualizer onRequestProject={(systemId) => { setSystem(systemId); document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" }); }} />
+      <ProjectVisualizer onRequestProject={acceptHandoff} />
 
       <section className="showcase-section section" aria-labelledby="showcase-title">
         <div className="showcase-copy">
@@ -137,8 +137,8 @@ export default function Home() {
         <div className="process-heading"><p className="eyebrow"><span /> Simple by design</p><h2>From a photograph<br/>to a finished space.</h2></div>
         <div className="steps">
           <article><span>01</span><ImagePlus/><h3>Share your space</h3><p>Add a photo, approximate dimensions, or simply your contact details.</p></article>
-          <article><span>02</span><Ruler/><h3>Place your system</h3><p>Choose a product, finish and angle, then fit it over your project area.</p></article>
-          <article><span>03</span><Sparkles/><h3>Refine it with a designer</h3><p>Send your concept to our team for measurements, engineering and a project proposal.</p></article>
+          <article><span>02</span><Ruler/><h3>Mark your project area</h3><p>Brush or outline the exact part of the photo where your selected system belongs.</p></article>
+          <article><span>03</span><Sparkles/><h3>Generate and refine</h3><p>Create an AI design concept, then send the specifications to our team for site measurement and engineering.</p></article>
         </div>
         <aside className="permit-note">
           <p>Permit support</p>
@@ -184,8 +184,9 @@ export default function Home() {
           <div className="contact-row"><label>Phone <span>optional</span><input name="phone" type="tel" autoComplete="tel" /></label><label>Project ZIP code <span>optional</span><input name="zip" type="text" inputMode="numeric" autoComplete="postal-code" /></label></div>
           <label>Product or service<select value={system} onChange={(event) => setSystem(event.target.value)}>{systems.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
           <label>How can we help? <span>optional</span><textarea name="message" rows={4} placeholder="Tell us about your patio, terrace or commercial space." /></label>
-          <button className="button light" type="submit">Request my project budget <ArrowRight size={18}/></button>
-          <small>This opens your email app with the project information ready to send.</small>
+          {projectContext && <div className="consultation-context"><strong>Visualizer details attached</strong><pre>{projectContext}</pre></div>}
+          <button className="button light" type="submit" disabled={submitting}>{submitting ? "Sending…" : "Request my project budget"} <ArrowRight size={18}/></button>
+          <small aria-live="polite">{contactStatus || "Your information is submitted securely to NEST. If delivery is unavailable, your entries stay in this form."}</small>
         </form>
         <div className="footer-line"><a className="brand" href="#top" aria-label="NEST Outdoor Systems home"><img src="/brand/nest-outdoor-systems-final.png" alt="NEST Outdoor Systems"/></a><p>Serving residential and commercial projects across the United States</p><p>© 2026 NEST Outdoor Systems</p></div>
       </footer>
