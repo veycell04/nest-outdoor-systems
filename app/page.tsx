@@ -49,7 +49,7 @@ export default function Home() {
 
   const handleContactSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form=event.currentTarget,data=new FormData(form);data.append("productId",system);data.append("projectContext",projectContext||[`Product: ${selectedSystem.label}`,`Provided measurements: ${width||"Unknown"} ft width, ${depth||"Unknown"} ft ${secondDimensionLabel.toLowerCase()}${height?`, ${height} ft height`:""}`].join("\n"));
+    const form=event.currentTarget,data=new FormData(form);data.append("requestId",crypto.randomUUID());data.append("productId",system);data.append("projectContext",projectContext||[`Product: ${selectedSystem.label}`,`Provided measurements: ${width||"Unknown"} ft width, ${depth||"Unknown"} ft ${secondDimensionLabel.toLowerCase()}${height?`, ${height} ft height`:""}`].join("\n"));
     setSubmitting(true);setContactStatus("Sending your inquiry…");
     try{const response=await fetch("/api/consultation",{method:"POST",body:data}),payload=await response.json();if(!response.ok)throw new Error(payload.error||"Inquiry not accepted.");setContactStatus("Your inquiry was accepted. Our design team will follow up by email.");form.reset();setProjectContext("");sessionStorage.removeItem("nest-consultation")}catch(error){setContactStatus(error instanceof Error?error.message:"Your inquiry was not sent. Please email hello@nestpergola.com.")}finally{setSubmitting(false)}
   };

@@ -29,7 +29,7 @@ test("validates decoded mask alignment before contacting the provider",async()=>
   const old=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY="test-only";
   const body=new FormData();body.append("photo",new File([png(1024,1024)],"photo.png",{type:"image/png"}));body.append("mask",new File([png(1024,900)],"mask.png",{type:"image/png"}));body.append("productId","awning");body.append("requestId","alignment-test");body.append("specs",JSON.stringify({finish:"Anthracite",options:[],measurements:{},unit:"ft"}));
   const response=await visualize(new Request("http://localhost/api/visualize",{method:"POST",body}));
-  assert.equal(response.status,400);assert.match((await response.json()).error,/exactly match/i);
+  assert.equal(response.status,400);const payload=await response.json();assert.match(payload.error,/exactly match/i);assert.equal(payload.requestId,"alignment-test");assert.match(payload.error,/Reference: alignment-test/);
   if(old)process.env.OPENAI_API_KEY=old;else delete process.env.OPENAI_API_KEY;
 });
 
@@ -52,4 +52,22 @@ test("does not claim consultation delivery without provider setup",async()=>{
 test("visualizer source includes download and consultation handoff actions",async()=>{
   const source=await import("node:fs/promises").then(fs=>fs.readFile(new URL("../app/project-visualizer.tsx",import.meta.url),"utf8"));
   assert.match(source,/download=`nest-/);assert.match(source,/onRequestProject\(\{productId/);assert.match(source,/Request consultation/);
+  assert.doesNotMatch(source,/setMeasurements\(\{\}\).*setResult\(null\)/);
+  assert.doesNotMatch(source,/setGenerating\(true\);setResult\(null\)/);
+  assert.match(source,/Provided measurements —/);
+});
+
+test("Cassette Awning maps to width and projection",async()=>{
+  const {products}=await vite.ssrLoadModule("/lib/products.ts");
+  const awning=products.find(product=>product.id==="awning");
+  assert.equal(awning.label,"Cassette Awning");
+  assert.deepEqual(awning.dimensions,["width","projection"]);
+  assert.deepEqual(awning.referenceImages,["/projects/elevated-cassette-awning.jpeg"]);
+});
+
+test("structured logs redact credentials, images, and contact details",async()=>{
+  const {logFailure}=await vite.ssrLoadModule("/lib/server-log.ts"),lines=[],original=console.error;
+  console.error=(...args)=>lines.push(args.join(" "));
+  try{logFailure({requestId:"controlled-log-test",stage:"image_generation",productId:"awning",startedAt:Date.now()-12,status:502,error:new Error("Bearer secret-token sk-test123 customer@example.com +1 312 555 0100 data:image/png;base64,AAAA"),providerCode:"provider_test",providerRequestId:"req_provider_123"})}finally{console.error=original}
+  const event=JSON.parse(lines[0]);assert.equal(event.requestId,"controlled-log-test");assert.equal(event.stage,"image_generation");assert.equal(event.productId,"awning");assert.equal(event.httpStatus,502);assert.equal(event.providerCode,"provider_test");assert.equal(event.providerRequestId,"req_provider_123");assert.doesNotMatch(lines.join("\n"),/secret-token|sk-test123|customer@example|312 555|base64,AAAA/);assert.match(lines[1],/server stack/);
 });
