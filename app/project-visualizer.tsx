@@ -2,6 +2,7 @@
 
 import { Download, Eraser, ImagePlus, MousePointer2, Redo2, Send, Sparkles, SquareDashedMousePointer, Undo2, X } from "lucide-react";
 import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import { products, type ProductDefinition } from "../lib/products";
 
 export type VisualizerHandoff = { productId:string; context:string; conceptImage?:string };
@@ -12,6 +13,7 @@ type Concept = { image:string; productId:string; productLabel:string; measuremen
 const colors:Record<string,string>={Anthracite:"#303332",Bronze:"#6d5a48",White:"#deddd8"};
 
 const toBlob=(canvas:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob((blob)=>blob?resolve(blob):reject(new Error("Export failed")),"image/png"));
+const toJpeg=(canvas:HTMLCanvasElement,quality=.82)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob((blob)=>blob?resolve(blob):reject(new Error("Photo compression failed")),"image/jpeg",quality));
 function draw(ctx:CanvasRenderingContext2D,mark:Mark,mask=false){if(!mark.points.length)return;ctx.save();ctx.strokeStyle=mask?"#000":"rgba(216,176,142,.88)";ctx.fillStyle=mask?"#000":"rgba(216,176,142,.56)";ctx.lineCap="round";ctx.lineJoin="round";ctx.lineWidth=mark.size;ctx.beginPath();ctx.moveTo(mark.points[0].x,mark.points[0].y);mark.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));if(mark.type==="polygon"&&mark.points.length>2){ctx.closePath();ctx.fill()}else ctx.stroke();ctx.restore()}
 const title=(value:string)=>value[0].toUpperCase()+value.slice(1);
 export function mapPointerToCanvas(canvas:HTMLCanvasElement|null,clientX:number,clientY:number){if(!canvas||!canvas.isConnected)return null;const rect=canvas.getBoundingClientRect();if(rect.width<=0||rect.height<=0||canvas.width<=0||canvas.height<=0)return null;return{x:(clientX-rect.left)*canvas.width/rect.width,y:(clientY-rect.top)*canvas.height/rect.height}}
