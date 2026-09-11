@@ -84,6 +84,11 @@ test("Cassette Awning maps to width and projection",async()=>{
   assert.deepEqual(awning.referenceImages,["/projects/elevated-cassette-awning.jpeg"]);
 });
 
+test("Sliding Glass uses its deployed concept visualization reference",async()=>{
+  const {products}=await vite.ssrLoadModule("/lib/products.ts"),sliding=products.find(product=>product.id==="sliding_glass");
+  assert.equal(sliding.label,"Sliding Glass — Concept Visualization");assert.deepEqual(sliding.referenceImages,["/projects/elevated-sliding-glass.png"]);assert.equal(sliding.missingReference,undefined);assert.match(sliding.details,/concept visualization, not a completed project/i);
+});
+
 test("structured logs redact credentials, images, and contact details",async()=>{
   const {logFailure}=await vite.ssrLoadModule("/lib/server-log.ts"),lines=[],original=console.error;
   console.error=(...args)=>lines.push(args.join(" "));

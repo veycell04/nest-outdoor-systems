@@ -362,7 +362,7 @@ export async function POST(request: Request) {
         new Blob([bytes], {
           type: reference.headers.get("content-type") || "image/jpeg",
         }),
-        `reference-${index}.jpg`,
+        `reference-${index}${path.endsWith(".png") ? ".png" : ".jpg"}`,
       );
     }
   } catch (error) {
