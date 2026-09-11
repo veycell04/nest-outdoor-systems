@@ -314,6 +314,26 @@ test("every priced system has a deployed visualizer reference", async () => {
     ]);
 });
 
+test("customer-facing product labels use the approved louvered names", async () => {
+  const { products } = await vite.ssrLoadModule("/lib/products.ts");
+  assert.equal(
+    products.find((item) => item.id === "bioclimatic_double").label,
+    "Louvered Pergola — Double Retracting",
+  );
+  assert.equal(
+    products.find((item) => item.id === "rolling_roof").label,
+    "Louvered Pergola — Retracting Roof",
+  );
+  assert.equal(
+    products.find((item) => item.id === "tilt").label,
+    "Louvered Pergola — Tilting Louvers",
+  );
+  assert.equal(
+    products.some((item) => /Bioclimatic/.test(item.label)),
+    false,
+  );
+});
+
 test("concept references are labeled separately in the website gallery", async () => {
   const fs = await import("node:fs/promises"),
     page = await fs.readFile(

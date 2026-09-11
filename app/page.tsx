@@ -13,21 +13,21 @@ const systems = products;
 const projects = [
   {
     image: "/projects/elevated-bioclimatic-double.png",
-    title: "Bioclimatic Pergola — Double Moving",
+    title: "Louvered Pergola — Double Retracting",
     type: "Concept Visualization",
     system: "bioclimatic_double",
     concept: true,
   },
   {
     image: "/projects/elevated-rolling-roof.png",
-    title: "Bioclimatic Pergola — Rolling Roof",
+    title: "Louvered Pergola — Retracting Roof",
     type: "Concept Visualization",
     system: "rolling_roof",
     concept: true,
   },
   {
     image: "/projects/elevated-tilt-system.png",
-    title: "Bioclimatic Pergola — Tilt System",
+    title: "Louvered Pergola — Tilting Louvers",
     type: "Concept Visualization",
     system: "tilt",
     concept: true,
