@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { products, type ProductDefinition } from "../lib/products";
 import { PergolaViewer } from "./pergola-viewer";
@@ -31,6 +31,50 @@ const colors: Record<string, string> = {
 };
 const disclaimer =
   "Concept visualization — final design, engineering and dimensions require professional verification.";
+export function containRect(
+  containerWidth: number,
+  containerHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+) {
+  if (
+    containerWidth <= 0 ||
+    containerHeight <= 0 ||
+    imageWidth <= 0 ||
+    imageHeight <= 0
+  )
+    return null;
+  const scale = Math.min(
+      containerWidth / imageWidth,
+      containerHeight / imageHeight,
+    ),
+    width = imageWidth * scale,
+    height = imageHeight * scale;
+  return {
+    x: (containerWidth - width) / 2,
+    y: (containerHeight - height) / 2,
+    width,
+    height,
+  };
+}
+export function drawContain(
+  context: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  imageWidth: number,
+  imageHeight: number,
+  canvasWidth: number,
+  canvasHeight: number,
+) {
+  const bounds = containRect(
+    canvasWidth,
+    canvasHeight,
+    imageWidth,
+    imageHeight,
+  );
+  if (!bounds) return null;
+  context.drawImage(image, bounds.x, bounds.y, bounds.width, bounds.height);
+  return bounds;
+}
 const toJpeg = (canvas: HTMLCanvasElement, quality = 0.82) =>
   new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
@@ -93,9 +137,12 @@ export function ProjectVisualizer({
     [generating, setGenerating] = useState(false),
     [status, setStatus] = useState(""),
     [uploadProgress, setUploadProgress] = useState(0),
-    [elapsed, setElapsed] = useState(0);
+    [elapsed, setElapsed] = useState(0),
+    [displayBounds, setDisplayBounds] =
+      useState<ReturnType<typeof containRect>>(null);
   const abortRef = useRef<AbortController | null>(null),
-    timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null),
+    stageRef = useRef<HTMLDivElement | null>(null);
   const selected = useMemo(
     () =>
       products.find((product) => product.id === selectedProductId) ||
@@ -103,9 +150,25 @@ export function ProjectVisualizer({
     [selectedProductId],
   );
   const secondLabel =
-    selected.id === "umbrella" ? "Length" : "Depth / projection";
+    selected.id === "umbrella"
+      ? "Length"
+      : selected.id === "awning" || selected.id === "wintent"
+        ? "Projection"
+        : "Depth / projection";
   const viewerWidth = Number(measurements.width) || 12,
     viewerDepth = Number(measurements.depth) || 16;
+  const recalculateDisplayBounds = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage || !photo) return setDisplayBounds(null);
+    setDisplayBounds(
+      containRect(
+        stage.clientWidth,
+        stage.clientHeight,
+        photo.width,
+        photo.height,
+      ),
+    );
+  }, [photo]);
 
   useEffect(
     () => () => {
@@ -126,6 +189,20 @@ export function ProjectVisualizer({
     },
     [photo],
   );
+  useEffect(() => {
+    recalculateDisplayBounds();
+    const stage = stageRef.current;
+    if (!stage) return;
+    const observer = new ResizeObserver(recalculateDisplayBounds);
+    observer.observe(stage);
+    window.addEventListener("resize", recalculateDisplayBounds);
+    window.addEventListener("orientationchange", recalculateDisplayBounds);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", recalculateDisplayBounds);
+      window.removeEventListener("orientationchange", recalculateDisplayBounds);
+    };
+  }, [recalculateDisplayBounds]);
 
   async function choosePhoto(file?: File) {
     if (!file) return;
@@ -146,9 +223,16 @@ export function ProjectVisualizer({
         canvas = document.createElement("canvas");
       canvas.width = Math.round(bitmap.width * scale);
       canvas.height = Math.round(bitmap.height * scale);
-      canvas
-        .getContext("2d")
-        ?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const normalizationContext = canvas.getContext("2d");
+      if (!normalizationContext) throw new Error("canvas");
+      drawContain(
+        normalizationContext,
+        bitmap,
+        bitmap.width,
+        bitmap.height,
+        canvas.width,
+        canvas.height,
+      );
       bitmap.close();
       let quality = 0.82,
         normalized = await toJpeg(canvas, quality);
@@ -185,6 +269,15 @@ export function ProjectVisualizer({
     const canvas = document.createElement("canvas");
     canvas.width = photo.width;
     canvas.height = photo.height;
+    const context = canvas.getContext("2d"),
+      bounds = containRect(
+        canvas.width,
+        canvas.height,
+        photo.width,
+        photo.height,
+      );
+    if (!context || !bounds) throw new Error("Mask preparation failed");
+    context.clearRect(bounds.x, bounds.y, bounds.width, bounds.height);
     return toPng(canvas);
   }
   function summary(product: ProductDefinition, concept = Boolean(result)) {
@@ -198,6 +291,7 @@ export function ProjectVisualizer({
         .join(", ") || "None provided";
     return [
       `Product: ${product.label}`,
+      ...(product.pricingNote ? [`Pricing: ${product.pricingNote}`] : []),
       `Frame: ${finish}`,
       `Structure: ${structure}`,
       `Lighting: ${lighting ? "Yes" : "No"}`,
@@ -414,7 +508,14 @@ export function ProjectVisualizer({
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight + footer;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(image, 0, 0);
+      drawContain(
+        ctx,
+        image,
+        image.naturalWidth,
+        image.naturalHeight,
+        canvas.width,
+        image.naturalHeight,
+      );
       ctx.fillStyle = "#101715";
       ctx.fillRect(0, image.naturalHeight, canvas.width, footer);
       ctx.fillStyle = "#d8b08e";
@@ -477,7 +578,7 @@ export function ProjectVisualizer({
         </p>
       </div>
       <div className="ai-workspace">
-        <div className="ai-stage">
+        <div className="ai-stage" ref={stageRef}>
           {!photo ? (
             <label className="ai-empty">
               <input
@@ -489,61 +590,83 @@ export function ProjectVisualizer({
               <strong>Upload your project-area photo</strong>
               <span>Optimized privately in your browser</span>
             </label>
-          ) : result ? (
+          ) : (
             <div
-              className="comparison"
-              style={{ "--compare": `${compare}%` } as React.CSSProperties}
+              className="contained-media"
+              style={
+                displayBounds
+                  ? {
+                      left: displayBounds.x,
+                      top: displayBounds.y,
+                      width: displayBounds.width,
+                      height: displayBounds.height,
+                    }
+                  : undefined
+              }
             >
-              <img src={photo.url} alt="Original project area" />
-              <div className="comparison-after">
-                <img
-                  src={result.image}
-                  alt={`Concept visualization showing ${result.productLabel}`}
-                />
-              </div>
-              <span className="compare-label before">Original</span>
-              <span className="compare-label after">Concept</span>
-              {(result.measurements.width ||
-                result.measurements.depth ||
-                result.measurements.height) && (
-                <div className="result-measurements">
-                  <strong>Provided measurements</strong>
-                  {result.measurements.width && (
-                    <span>Width: {result.measurements.width} ft</span>
+              {result ? (
+                <div
+                  className="comparison"
+                  style={{ "--compare": `${compare}%` } as React.CSSProperties}
+                >
+                  <img
+                    src={photo.url}
+                    alt="Original project area"
+                    onLoad={recalculateDisplayBounds}
+                  />
+                  <div className="comparison-after">
+                    <img
+                      src={result.image}
+                      alt={`Concept visualization showing ${result.productLabel}`}
+                    />
+                  </div>
+                  <span className="compare-label before">Original</span>
+                  <span className="compare-label after">Concept</span>
+                  {(result.measurements.width ||
+                    result.measurements.depth ||
+                    result.measurements.height) && (
+                    <div className="result-measurements">
+                      <strong>Provided measurements</strong>
+                      {result.measurements.width && (
+                        <span>Width: {result.measurements.width} ft</span>
+                      )}
+                      {result.measurements.depth && (
+                        <span>
+                          {result.productId === "awning" ||
+                          result.productId === "wintent"
+                            ? "Projection"
+                            : "Depth / length"}
+                          : {result.measurements.depth} ft
+                        </span>
+                      )}
+                      {result.measurements.height && (
+                        <span>Height: {result.measurements.height} ft</span>
+                      )}
+                    </div>
                   )}
-                  {result.measurements.depth && (
-                    <span>
-                      {result.productId === "awning"
-                        ? "Projection"
-                        : "Depth / length"}
-                      : {result.measurements.depth} ft
+                  {result.productId !== selected.id && (
+                    <span className="previous-result">
+                      Previous result · {result.productLabel}
                     </span>
                   )}
-                  {result.measurements.height && (
-                    <span>Height: {result.measurements.height} ft</span>
-                  )}
+                  <input
+                    aria-label="Before and after comparison"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={compare}
+                    onChange={(event) => setCompare(Number(event.target.value))}
+                  />
                 </div>
+              ) : (
+                <img
+                  className="prepared-photo"
+                  src={photo.url}
+                  alt="Uploaded project area"
+                  onLoad={recalculateDisplayBounds}
+                />
               )}
-              {result.productId !== selected.id && (
-                <span className="previous-result">
-                  Previous result · {result.productLabel}
-                </span>
-              )}
-              <input
-                aria-label="Before and after comparison"
-                type="range"
-                min="0"
-                max="100"
-                value={compare}
-                onChange={(event) => setCompare(Number(event.target.value))}
-              />
             </div>
-          ) : (
-            <img
-              className="prepared-photo"
-              src={photo.url}
-              alt="Uploaded project area"
-            />
           )}
           {generating && (
             <div className="generation-overlay">
@@ -587,6 +710,9 @@ export function ProjectVisualizer({
               </small>
             </span>
           </label>
+          {selected.pricingNote && (
+            <p className="reference-warning">{selected.pricingNote}</p>
+          )}
           <div className="ai-step">
             <span>02</span>
             <div>

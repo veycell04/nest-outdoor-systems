@@ -1,7 +1,7 @@
 export type PriceGrid = {
   id: string; label: string; viewer: string; measure: string;
   unit: "mm" | "cm" | "m"; columns: number[]; rows: number[];
-  prices: (number | null)[][]; included: string; swapAxes?: boolean;
+  prices: (number | null)[][]; included: string; swapAxes?: boolean; customConsultationRequired?: boolean;
 };
 
 export const pricedSystems: PriceGrid[] = [
@@ -16,6 +16,7 @@ export const pricedSystems: PriceGrid[] = [
   { id:"guillotine", label:"Guillotine Glass", viewer:"guillotine", measure:"glass opening", unit:"cm", columns:[200,250,300,350,400], rows:[150,200,250,300], prices:[[1990,2060,2120,2230,2300],[2080,2160,2240,2350,2440],[2270,2260,2360,2360,2570],[2260,2360,2470,2590,2710]], included:"4+16+4 insulated tempered glass, Somfy chain motor and packaging" },
   { id:"sliding_glass", label:"Sliding Glass", viewer:"sliding_glass", measure:"glass opening", unit:"cm", columns:[200,250,300,350,400], rows:[150,200,250,300], prices:[[1430,1490,1550,1600,1660],[1500,1570,1640,1710,1770],[1570,1650,1730,1810,1890],[1640,1730,1820,1920,2020]], included:"4-panel luxury side-stacking system, 4+12+4 clear glass, locking hardware and packaging" },
   { id:"awning", label:"Full Cassette Awning", viewer:"awning", measure:"awning coverage", unit:"cm", columns:[150,200,250,300], rows:[300,350,400,450,500,550,600,700], prices:[[1593.6,1676.4,1760.4,null],[1699.2,1792.8,1890,1983.6],[1803.6,1906.8,2016,2126.4],[1904.4,2023.2,2144.4,2264.4],[2115.6,2251.2,2274,2407.2],[2216.4,2370,2522.4,2679.6],[2280,2434.8,2592,2748],[2510.4,2688,2872.8,3056.4]], included:"Somfy remote-controlled motor, integrated Samsung LED lighting and imported acrylic fabric with 7-year fade warranty" },
+  { id:"wintent", label:"Wintent Window Awning", viewer:"awning", measure:"awning coverage", unit:"cm", columns:[], rows:[], prices:[], included:"Custom consultation required.", customConsultationRequired:true },
   { id:"umbrella", label:"Square Garden Umbrella", viewer:"umbrella", measure:"canopy coverage", unit:"cm", columns:[250,300,350,400,450,500,550,600], rows:[250,300,350,400,450,500,550,600], prices:[[1840,null,null,null,null,null,null,null],[null,1920,null,null,null,null,null,null],[null,null,2030,null,null,null,null,null],[null,null,null,2250,null,null,null,null],[null,null,null,null,2270,null,null,null],[null,null,null,null,null,2300,null,null],[null,null,null,null,null,null,2450,null],[null,null,null,null,null,null,null,2630]], included:"Square umbrella, remote-controlled automation, integrated lighting and imported acrylic fabric with 7-year fade warranty; delivered disassembled" },
 ];
 

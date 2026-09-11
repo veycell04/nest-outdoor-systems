@@ -187,6 +187,52 @@ test("one visualizer flow removes manual painting and embeds synchronized 3D con
   assert.doesNotMatch(page, /id="estimate"/);
 });
 
+test("uploaded photos and canvas composition use centered contain geometry", async () => {
+  const fs = await import("node:fs/promises"),
+    [{ containRect }, source, css, legacy] = await Promise.all([
+      vite.ssrLoadModule("/app/project-visualizer.tsx"),
+      fs.readFile(
+        new URL("../app/project-visualizer.tsx", import.meta.url),
+        "utf8",
+      ),
+      fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+      fs.readFile(
+        new URL(
+          "../nest-outdoor-systems-visualizer-source/app/project-visualizer.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+  assert.deepEqual(containRect(1000, 500, 400, 400), {
+    x: 250,
+    y: 0,
+    width: 500,
+    height: 500,
+  });
+  assert.deepEqual(containRect(500, 1000, 1000, 500), {
+    x: 0,
+    y: 375,
+    width: 500,
+    height: 250,
+  });
+  assert.equal(containRect(0, 500, 400, 400), null);
+  assert.match(source, /function drawContain/);
+  assert.doesNotMatch(source, /drawCover/);
+  assert.match(source, /new ResizeObserver\(recalculateDisplayBounds\)/);
+  assert.match(source, /orientationchange/);
+  assert.match(
+    source,
+    /context\.clearRect\(bounds\.x, bounds\.y, bounds\.width, bounds\.height\)/,
+  );
+  assert.match(
+    css,
+    /\.prepared-photo[\s\S]{0,180}object-fit:\s*contain;[\s\S]{0,100}object-position:\s*center;/,
+  );
+  assert.match(legacy, /function drawContain/);
+  assert.doesNotMatch(legacy, /drawCover/);
+});
+
 test("server cache keys the optimized photo and synchronized configuration", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(
@@ -301,6 +347,7 @@ test("every priced system has a deployed visualizer reference", async () => {
     flat: "/projects/elevated-flat-pergola.png",
     ceiling_zip: "/projects/elevated-ceiling-zip.png",
     sliding_glass: "/projects/elevated-sliding-glass.png",
+    wintent: "/projects/elevated-wintent.png",
   };
   for (const priced of pricedSystems) {
     const product = products.find((item) => item.id === priced.id);
@@ -312,6 +359,40 @@ test("every priced system has a deployed visualizer reference", async () => {
     assert.deepEqual(products.find((item) => item.id === id).referenceImages, [
       path,
     ]);
+});
+
+test("Wintent is complete across catalog, visualization, pricing, gallery and video", async () => {
+  const fs = await import("node:fs/promises"),
+    [{ products }, { pricedSystems }, page, layout, visualizer, route] =
+      await Promise.all([
+        vite.ssrLoadModule("/lib/products.ts"),
+        vite.ssrLoadModule("/app/pricing.ts"),
+        fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+        fs.readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+        fs.readFile(
+          new URL("../app/project-visualizer.tsx", import.meta.url),
+          "utf8",
+        ),
+        fs.readFile(
+          new URL("../app/api/visualize/route.ts", import.meta.url),
+          "utf8",
+        ),
+      ]);
+  const product = products.find((item) => item.id === "wintent"),
+    pricing = pricedSystems.find((item) => item.id === "wintent");
+  assert.equal(product.label, "Wintent Window Awning");
+  assert.deepEqual(product.dimensions, ["width", "projection"]);
+  assert.deepEqual(product.referenceImages, ["/projects/elevated-wintent.png"]);
+  assert.equal(pricing.customConsultationRequired, true);
+  assert.equal(pricing.included, "Custom consultation required.");
+  assert.deepEqual(pricing.prices, []);
+  assert.match(page, /elevated-wintent\.png/);
+  assert.match(page, /nest-wintent-showcase\.mp4/);
+  assert.match(page, /aria-label="Wintent Window Awning in operation"/);
+  assert.match(layout, /Wintent window awnings/);
+  assert.match(visualizer, /selected\.id === "wintent"/);
+  assert.match(route, /fetch\(new URL\(path, request\.url\)\)/);
+  assert.doesNotMatch(route, /node:fs|readFile\(/);
 });
 
 test("customer-facing product labels use the approved louvered names", async () => {

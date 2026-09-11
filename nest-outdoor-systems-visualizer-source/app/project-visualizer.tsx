@@ -17,13 +17,13 @@ type ProjectVisualizerProps = {
   onRequestProject: (systemId: string) => void;
 };
 
-function drawCover(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
-  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-  const sourceWidth = width / scale;
-  const sourceHeight = height / scale;
-  const sourceX = (image.naturalWidth - sourceWidth) / 2;
-  const sourceY = (image.naturalHeight - sourceHeight) / 2;
-  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+function drawContain(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = image.naturalWidth * scale;
+  const drawHeight = image.naturalHeight * scale;
+  const x = (width - drawWidth) / 2;
+  const y = (height - drawHeight) / 2;
+  context.drawImage(image, x, y, drawWidth, drawHeight);
 }
 
 export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) {
@@ -77,7 +77,7 @@ export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) 
     output.height = 1000;
     const context = output.getContext("2d");
     if (!context) return;
-    drawCover(context, sourceImage, output.width, output.height);
+    drawContain(context, sourceImage, output.width, output.height);
     context.drawImage(webglCanvas, 0, 0, output.width, output.height);
     const link = document.createElement("a");
     link.download = `nest-${systemId}-concept.png`;

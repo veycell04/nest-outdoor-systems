@@ -45,4 +45,7 @@ test("renders only the approved customer-facing louvered product names", async (
   assert.match(html, /Louvered Pergola — Double Retracting/);
   assert.match(html, /Louvered Pergola — Retracting Roof/);
   assert.match(html, /Louvered Pergola — Tilting Louvers/);
+  assert.match(html, /Wintent Window Awning/);
+  assert.match(html, /\/projects\/elevated-wintent\.png/);
+  assert.match(html, /\/media\/nest-wintent-showcase\.mp4/);
 });

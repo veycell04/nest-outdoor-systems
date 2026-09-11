@@ -84,6 +84,13 @@ const projects = [
     system: "awning",
   },
   {
+    image: "/projects/elevated-wintent.png",
+    title: "Wintent Window Awning",
+    type: "Concept Visualization",
+    system: "wintent",
+    concept: true,
+  },
+  {
     image: "/projects/elevated-umbrella.jpeg",
     title: "Square Garden Umbrella",
     type: "Architectural Shade",
@@ -321,6 +328,25 @@ export default function Home() {
               <strong>Open or enclosed</strong>
             </div>
           </article>
+          <article className="showcase-video-wrap">
+            <video
+              className="showcase-video"
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
+              poster="/projects/elevated-wintent.png"
+              aria-label="Wintent Window Awning in operation"
+            >
+              <source src="/media/nest-wintent-showcase.mp4" type="video/mp4" />
+              Your browser does not support embedded video.
+            </video>
+            <div className="showcase-video-label">
+              <span>04 · Window awning</span>
+              <strong>Wintent Window Awning</strong>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -479,6 +505,9 @@ export default function Home() {
               ))}
             </select>
           </label>
+          {selectedSystem.pricingNote && (
+            <p className="reference-warning">{selectedSystem.pricingNote}</p>
+          )}
           <label>
             How can we help? <span>optional</span>
             <textarea

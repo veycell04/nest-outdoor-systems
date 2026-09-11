@@ -4,7 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NEST Outdoor Systems | Custom Pergolas",
-  description: "Upload a photo of your home and visualize a custom pergola, retractable roof, ZIP screen or glass enclosure before it is built.",
+  description:
+    "Visualize custom pergolas, Wintent window awnings, retractable roofs, ZIP screens and glass enclosures for your home.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -18,7 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-US">
-      <body className="antialiased"><ClientErrorBoundary>{children}</ClientErrorBoundary></body>
+      <body className="antialiased">
+        <ClientErrorBoundary>{children}</ClientErrorBoundary>
+      </body>
     </html>
   );
 }
