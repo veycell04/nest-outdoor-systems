@@ -184,6 +184,23 @@ export async function POST(request: Request) {
       "Choose a valid NEST product.",
       new Error("Unknown product ID"),
     );
+  const requiredReference =
+    productId === "solidroll"
+      ? "/projects/elevated-solidroll.jpg"
+      : productId === "guillotine"
+        ? "/projects/elevated-guillotine-glass.jpeg"
+        : null;
+  if (
+    requiredReference &&
+    (product.referenceImages.length !== 1 ||
+      product.referenceImages[0] !== requiredReference)
+  )
+    return fail(
+      "validation",
+      500,
+      "The selected product reference is not configured correctly.",
+      new Error(`Reference mapping mismatch for ${productId}`),
+    );
   const now = Date.now(),
     key = sessionId,
     limit = generationLimit();
@@ -450,7 +467,6 @@ export async function POST(request: Request) {
       : process.env.OPENAI_IMAGE_PREVIEW_QUALITY || "low",
   );
   outbound.append("size", "auto");
-  outbound.append("input_fidelity", "high");
   outbound.append("output_format", "jpeg");
   outbound.append(
     "output_compression",

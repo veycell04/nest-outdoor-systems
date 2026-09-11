@@ -183,7 +183,7 @@ export const products: ProductDefinition[] = [
     family: "glass",
     details:
       "Motorized vertically moving glass enclosure system with framed panels.",
-    referenceImages: ["/media/elevated-project-showcase-2-poster.jpg"],
+    referenceImages: ["/projects/elevated-guillotine-glass.jpeg"],
     dimensions: ["width", "height"],
     finishes: ["Anthracite", "Bronze", "White"],
     options: ["Motorized operation", "Insulated glass", "Clear glass"],
@@ -198,7 +198,7 @@ export const products: ProductDefinition[] = [
     dimensions: ["width", "height"],
     finishes: ["Anthracite", "Bronze", "White"],
     options: ["Motorized operation"],
-    viewer: "guillotine",
+    viewer: "solidroll",
   },
   {
     id: "sliding_glass",

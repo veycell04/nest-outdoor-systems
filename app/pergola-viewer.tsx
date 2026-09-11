@@ -42,7 +42,7 @@ export function PergolaModel({ product, width, depth, attached, roofOpen, color,
     <mesh position={[0, h / 2, .02]} castShadow><planeGeometry args={[w - .32, h - .35]} /><meshStandardMaterial color="#676c69" transparent opacity={.68} roughness={1} /></mesh>
   </group>;
 
-  if (product === "guillotine") return <group position={[0, .05, 0]}>
+  if (product === "guillotine" || product === "solidroll") return <group position={[0, .05, 0]}>
     {presentation === "studio" && <Box position={[0, 0, 0]} scale={[w + 4, .08, d + 4]} color="#d9d3c9" />}
     <Box position={[-w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />
     <Box position={[w / 2, h / 2, 0]} scale={[beam, h, beam]} color={color} />

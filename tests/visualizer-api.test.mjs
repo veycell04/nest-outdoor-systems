@@ -278,7 +278,7 @@ test("result UI keeps the upload as Original and never renders catalog reference
   );
   assert.match(route, /pink vertical height line/);
   assert.match(route, /green horizontal width line/);
-  assert.match(route, /outbound\.append\("input_fidelity", "high"\)/);
+  assert.doesNotMatch(route, /input_fidelity/);
   assert.match(route, /responseUrl: payload\.imageUrl/);
   assert.match(route, /image-1-customer-edit-target\.jpg/);
   assert.match(route, /image-2-placement-mask\.png/);
@@ -412,12 +412,17 @@ test("Guillotine Glass and Solidroll keep distinct IDs and references", async ()
 
   assert.equal(guillotine.label, "Guillotine Glass");
   assert.deepEqual(guillotine.referenceImages, [
-    "/media/elevated-project-showcase-2-poster.jpg",
+    "/projects/elevated-guillotine-glass.jpeg",
   ]);
   assert.equal(solidroll.label, "Solidroll");
   assert.deepEqual(solidroll.referenceImages, [
     "/projects/elevated-solidroll.jpg",
   ]);
+  assert.equal(guillotine.viewer, "guillotine");
+  assert.equal(solidroll.viewer, "solidroll");
+  assert.match(route, /productId === "solidroll"/);
+  assert.match(route, /productId === "guillotine"/);
+  assert.match(route, /Reference mapping mismatch/);
   assert.match(page, /elevated-solidroll\.jpg/);
   assert.match(page, /02 · Guillotine Glass/);
   assert.match(page, /03 · Solidroll/);
@@ -467,6 +472,18 @@ test("a generated result URL cannot equal its product reference URL", async () =
     ),
     true,
   );
+});
+
+test("Solidroll selection sends its own product ID and sunburst omits input fidelity", async () => {
+  const fs = await import("node:fs/promises"),
+    [client, route] = await Promise.all([
+      fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+      fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8"),
+    ]);
+  assert.match(client, /<option key=\{product\.id\} value=\{product\.id\}>/);
+  assert.match(client, /productId: selected\.id/);
+  assert.match(route, /gpt-image-2\.5-sunburst/);
+  assert.doesNotMatch(route, /input_fidelity/);
 });
 
 test("Wintent is complete across catalog, visualization, gallery and video", async () => {
