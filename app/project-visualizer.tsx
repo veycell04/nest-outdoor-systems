@@ -1,15 +1,15 @@
 "use client";
 
 import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import {
   isGeneratedResultUrl,
   products,
   type ProductDefinition,
 } from "../lib/products";
-import { PergolaViewer } from "./pergola-viewer";
+import type { PolygonPoint } from "./installation-area-editor";
 
 export type VisualizerHandoff = {
   productId: string;
@@ -17,7 +17,6 @@ export type VisualizerHandoff = {
   conceptImage?: string;
 };
 type Measurements = { width: string; depth: string; height: string };
-type Placement = { x: number; y: number; width: number; height: number };
 type Concept = {
   image: string;
   productId: string;
@@ -26,8 +25,6 @@ type Concept = {
   unit: "ft";
   finish: string;
   structure: "attached" | "freestanding";
-  lighting: boolean;
-  screens: boolean;
   quality: "preview" | "high";
 };
 const colors: Record<string, string> = {
@@ -37,6 +34,10 @@ const colors: Record<string, string> = {
 };
 const disclaimer =
   "Concept visualization — final design, engineering and dimensions require professional verification.";
+const InstallationAreaEditor = dynamic(
+  () => import("./installation-area-editor"),
+  { ssr: false },
+);
 export function containRect(
   containerWidth: number,
   containerHeight: number,
@@ -133,24 +134,19 @@ export function ProjectVisualizer({
     [finish, setFinish] = useState("Anthracite"),
     [structure, setStructure] = useState<"attached" | "freestanding">(
       "attached",
-    ),
-    [lighting, setLighting] = useState(true),
-    [screens, setScreens] = useState(false),
-    [roofOpen, setRoofOpen] = useState(35);
+    );
   const [result, setResult] = useState<Concept | null>(null),
-    [activeView, setActiveView] = useState<"original" | "concept">("original"),
-    [advanced, setAdvanced] = useState(false),
+    [compare, setCompare] = useState(50),
     [generating, setGenerating] = useState(false),
     [status, setStatus] = useState(""),
     [uploadProgress, setUploadProgress] = useState(0),
     [elapsed, setElapsed] = useState(0),
-    [placement, setPlacement] = useState<Placement | null>(null),
+    [placement, setPlacement] = useState<PolygonPoint[]>([]),
     [displayBounds, setDisplayBounds] =
       useState<ReturnType<typeof containRect>>(null);
   const abortRef = useRef<AbortController | null>(null),
     timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null),
-    stageRef = useRef<HTMLDivElement | null>(null),
-    placementStartRef = useRef<{ x: number; y: number } | null>(null);
+    stageRef = useRef<HTMLDivElement | null>(null);
   const selected = useMemo(
     () =>
       products.find((product) => product.id === selectedProductId) ||
@@ -163,8 +159,6 @@ export function ProjectVisualizer({
       : selected.id === "awning" || selected.id === "wintent"
         ? "Projection"
         : "Depth / projection";
-  const viewerWidth = Number(measurements.width) || 12,
-    viewerDepth = Number(measurements.depth) || 16;
   const recalculateDisplayBounds = useCallback(() => {
     const stage = stageRef.current;
     if (!stage || !photo) return setDisplayBounds(null);
@@ -187,7 +181,6 @@ export function ProjectVisualizer({
   );
   useEffect(() => {
     if (!generating) return;
-    setElapsed(0);
     const timer = setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, [generating]);
@@ -268,8 +261,8 @@ export function ProjectVisualizer({
         height: canvas.height,
       });
       setResult(null);
-      setActiveView("original");
-      setPlacement(null);
+      setCompare(50);
+      setPlacement([]);
       setStatus(
         `Photo ready · ${canvas.width} × ${canvas.height} · ${(normalized.size / 1024 / 1024).toFixed(1)} MB`,
       );
@@ -296,54 +289,21 @@ export function ProjectVisualizer({
     if (!context || !bounds) throw new Error("Mask preparation failed");
     context.fillStyle = "#000";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const area = placement || { x: 0, y: 0, width: 1, height: 1 };
-    context.clearRect(
-      bounds.x + area.x * bounds.width,
-      bounds.y + area.y * bounds.height,
-      area.width * bounds.width,
-      area.height * bounds.height,
-    );
-    return toPng(canvas);
-  }
-  function placementPoint(event: ReactPointerEvent<HTMLDivElement>) {
-    const element = event.currentTarget,
-      rect = element.getBoundingClientRect();
-    if (!element.isConnected || rect.width <= 0 || rect.height <= 0)
-      return null;
-    return {
-      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
-    };
-  }
-  function startPlacement(event: ReactPointerEvent<HTMLDivElement>) {
-    if (
-      (event.target as HTMLElement).closest("button") ||
-      activeView !== "original"
-    )
-      return;
-    const point = placementPoint(event);
-    if (!point) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    placementStartRef.current = point;
-    setPlacement({ ...point, width: 0, height: 0 });
-  }
-  function movePlacement(event: ReactPointerEvent<HTMLDivElement>) {
-    const start = placementStartRef.current;
-    if (!start) return;
-    const point = placementPoint(event);
-    if (!point) return;
-    setPlacement({
-      x: Math.min(start.x, point.x),
-      y: Math.min(start.y, point.y),
-      width: Math.abs(point.x - start.x),
-      height: Math.abs(point.y - start.y),
+    if (placement.length !== 4)
+      throw new Error("Select all four installation-area corners first.");
+    context.save();
+    context.beginPath();
+    placement.forEach((point, index) => {
+      const x = bounds.x + point.x * bounds.width,
+        y = bounds.y + point.y * bounds.height;
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
     });
-  }
-  function finishPlacement() {
-    placementStartRef.current = null;
-    setPlacement((area) =>
-      area && area.width >= 0.03 && area.height >= 0.03 ? area : null,
-    );
+    context.closePath();
+    context.clip();
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+    return toPng(canvas);
   }
   async function normalizeConcept(imageUrl: string) {
     if (!photo) throw new Error("Photo is not ready");
@@ -383,16 +343,16 @@ export function ProjectVisualizer({
       `Product: ${product.label}`,
       `Frame: ${finish}`,
       `Structure: ${structure}`,
-      `Lighting: ${lighting ? "Yes" : "No"}`,
-      `Screens: ${screens ? "Yes" : "No"}`,
-      `Roof position: ${roofOpen}%`,
       `Provided measurements: ${dims}`,
       `AI concept generated: ${concept ? "Yes" : "No"}`,
     ].join("\n");
   }
   async function generate(highQuality = false) {
     if (!photo) return setStatus("Upload a project-area photo first.");
+    if (placement.length !== 4)
+      return setStatus("Select all four installation-area corners first.");
     if (generating) return;
+    setElapsed(0);
     setGenerating(true);
     setUploadProgress(0);
     setStatus(
@@ -420,9 +380,6 @@ export function ProjectVisualizer({
           measurements,
           finish,
           structure,
-          lighting,
-          screens,
-          roofOpen,
           quality: highQuality ? "high" : "preview",
         }),
       );
@@ -513,9 +470,6 @@ export function ProjectVisualizer({
             specs: {
               finish,
               structure,
-              lighting,
-              screens,
-              roofOpen,
               measurements,
               placement,
               unit: "ft",
@@ -557,13 +511,11 @@ export function ProjectVisualizer({
           unit: "ft",
           finish,
           structure,
-          lighting,
-          screens,
           quality: highQuality ? "high" : "preview",
         };
       if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
       setResult(concept);
-      setActiveView("concept");
+      setCompare(50);
       setStatus(
         `${disclaimer}${payload.cached ? " Previous matching result reused." : ""}`,
       );
@@ -587,7 +539,6 @@ export function ProjectVisualizer({
           ? message
           : `${message} Reference: ${requestId}`,
       );
-      setActiveView("original");
     } finally {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -698,10 +649,6 @@ export function ProjectVisualizer({
           ) : (
             <div
               className="contained-media"
-              onPointerDown={startPlacement}
-              onPointerMove={movePlacement}
-              onPointerUp={finishPlacement}
-              onPointerCancel={finishPlacement}
               style={
                 displayBounds
                   ? {
@@ -714,36 +661,27 @@ export function ProjectVisualizer({
               }
             >
               {result ? (
-                <div className="result-viewer">
+                <div
+                  className="comparison"
+                  style={{ "--compare": `${compare}%` } as React.CSSProperties}
+                >
                   <img
-                    src={activeView === "original" ? photo.url : result.image}
-                    alt={
-                      activeView === "original"
-                        ? "Original uploaded project photo"
-                        : `Your concept showing ${result.productLabel}`
-                    }
+                    src={photo.url}
+                    width={photo.width}
+                    height={photo.height}
+                    alt="Original uploaded project photo"
                     onLoad={recalculateDisplayBounds}
                   />
-                  <div
-                    className="result-view-toggle"
-                    role="group"
-                    aria-label="Choose visualizer image"
-                  >
-                    <button
-                      type="button"
-                      className={activeView === "original" ? "active" : ""}
-                      onClick={() => setActiveView("original")}
-                    >
-                      Original Photo
-                    </button>
-                    <button
-                      type="button"
-                      className={activeView === "concept" ? "active" : ""}
-                      onClick={() => setActiveView("concept")}
-                    >
-                      Your Concept
-                    </button>
+                  <div className="comparison-after">
+                    <img
+                      src={result.image}
+                      width={photo.width}
+                      height={photo.height}
+                      alt={`AI concept showing ${result.productLabel}`}
+                    />
                   </div>
+                  <span className="compare-label before">BEFORE</span>
+                  <span className="compare-label after">AI CONCEPT</span>
                   {(result.measurements.width ||
                     result.measurements.depth ||
                     result.measurements.height) && (
@@ -771,6 +709,14 @@ export function ProjectVisualizer({
                       Previous result · {result.productLabel}
                     </span>
                   )}
+                  <input
+                    aria-label="Before and AI concept comparison"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={compare}
+                    onChange={(event) => setCompare(Number(event.target.value))}
+                  />
                 </div>
               ) : (
                 <img
@@ -780,18 +726,12 @@ export function ProjectVisualizer({
                   onLoad={recalculateDisplayBounds}
                 />
               )}
-              {placement && activeView === "original" && (
-                <div
-                  className="placement-area"
-                  style={{
-                    left: `${placement.x * 100}%`,
-                    top: `${placement.y * 100}%`,
-                    width: `${placement.width * 100}%`,
-                    height: `${placement.height * 100}%`,
-                  }}
-                >
-                  <span>Placement area</span>
-                </div>
+              {!result && (
+                <InstallationAreaEditor
+                  points={placement}
+                  onChange={setPlacement}
+                  disabled={generating}
+                />
               )}
             </div>
           )}
@@ -839,13 +779,12 @@ export function ProjectVisualizer({
           </label>
           <div className="placement-help">
             <small>
-              Optional: drag over the photo to mark the installation area.
-              The pink vertical edge marks the left boundary and height; the
-              green horizontal edge marks the bottom boundary and width.
+              Click or tap four corners around the intended installation area.
+              Drag any corner to adjust the polygon before generating.
             </small>
-            {placement && (
-              <button type="button" onClick={() => setPlacement(null)}>
-                Clear area
+            {placement.length > 0 && (
+              <button type="button" onClick={() => setPlacement([])}>
+                Reset area
               </button>
             )}
           </div>
@@ -868,7 +807,7 @@ export function ProjectVisualizer({
                 if (result?.image.startsWith("blob:"))
                   URL.revokeObjectURL(result.image);
                 setResult(null);
-                setActiveView("original");
+                setCompare(50);
                 onProductChange(event.target.value);
               }}
             >
@@ -977,7 +916,7 @@ export function ProjectVisualizer({
                 type="button"
                 className="button generate"
                 onClick={() => generate(false)}
-                disabled={!photo}
+                disabled={!photo || placement.length !== 4}
               >
                 <Sparkles /> Generate My Concept
               </button>
@@ -1016,56 +955,6 @@ export function ProjectVisualizer({
           >
             {status || disclaimer}
           </p>
-          <button
-            type="button"
-            className="advanced-toggle"
-            aria-expanded={advanced}
-            onClick={() => setAdvanced((open) => !open)}
-          >
-            Customize in 3D <span>{advanced ? "−" : "+"}</span>
-          </button>
-          {advanced && (
-            <div className="advanced-3d">
-              <PergolaViewer
-                product={selected.viewer}
-                width={viewerWidth}
-                depth={viewerDepth}
-                attached={structure === "attached"}
-                roofOpen={roofOpen}
-                color={colors[finish]}
-                lighting={lighting}
-                screens={screens}
-              />
-              <label>
-                Roof position <span>{roofOpen}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={roofOpen}
-                  onChange={(event) => setRoofOpen(Number(event.target.value))}
-                />
-              </label>
-              <div className="advanced-checks">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={lighting}
-                    onChange={(event) => setLighting(event.target.checked)}
-                  />{" "}
-                  Integrated lighting
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={screens}
-                    onChange={(event) => setScreens(event.target.checked)}
-                  />{" "}
-                  ZIP screens
-                </label>
-              </div>
-            </div>
-          )}
         </aside>
       </div>
     </section>

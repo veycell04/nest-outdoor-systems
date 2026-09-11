@@ -341,7 +341,7 @@ export async function POST(request: Request) {
     unit = specs.unit === "m" ? "meters" : "feet and inches",
     owner = photoId.split("/")[1],
     cacheKey = createHash("sha256")
-      .update("customer-photo-edit-v2-solidroll-boundaries")
+      .update("customer-photo-edit-v4-konva-polygon")
       .update(Buffer.from(photoBytes))
       .update(Buffer.from(maskBytes))
       .update(
@@ -403,17 +403,18 @@ export async function POST(request: Request) {
       ),
     );
   }
-  const productInstruction =
-    product.id === "solidroll"
-      ? "Edit the customer photo only. Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening. Preserve everything outside the marked installation area. The product reference image is appearance guidance only and must not replace the customer photo."
-      : "Edit Image 1 only. Install the selected product inside the marked area. Image 3 is reference-only and must never replace the customer's property or background.";
+  const editInstruction =
+    "Edit the customer’s uploaded photograph only. Install the selected NEST product realistically within the identified installation area. Preserve the original building, storefront, windows, doors, ground, signage, perspective and surroundings outside the installation area. The catalog product image is reference-only and must never replace the customer photo.";
   const prompt = [
-    `Image 1 is the customer's property photo and the only edit target. Image 2 is the placement mask and restricts every modification to its transparent marked area. Image 3 and any later images are product appearance references only.`,
-    productInstruction,
+    `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. Image 3 and any later images are product appearance references only.`,
+    editInstruction,
+    product.id === "solidroll"
+      ? "Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening."
+      : `Install the selected product inside the marked area: ${product.label}.`,
     `Install this exact product type: ${product.label}. Verified product description: ${product.details}`,
     product.id === "solidroll"
-      ? `Treat the marked area's left boundary as the pink vertical height line and its bottom boundary as the green horizontal width line. Fit the Solidroll realistically across that storefront window opening. Preserve the storefront, brick, windows, sidewalk, signage, camera angle, mounting surfaces, and surroundings. Marked placement coordinates: ${JSON.stringify(placement)}.`
-      : `Marked placement coordinates: ${JSON.stringify(placement)}.`,
+      ? `Fit the Solidroll realistically within the four-corner storefront opening. Preserve the storefront, brick, windows, sidewalk, signage, camera angle, mounting surfaces, and surroundings. Polygon coordinates: ${JSON.stringify(placement)}.`
+      : `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     `Use the product reference only for the product's construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image building, background, ground, landscaping, furniture, sky, or surroundings.`,
     `Finish: ${finish}. Options: ${options.length ? options.join(", ") : "none selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
     `Preserve every pixel outside the placement mask, including the customer's building, windows, doors, ground, landscaping, people, furniture, perspective, camera position, crop, and surroundings. Infer product rotation and perspective from Image 1 and the placement area. Match mounting, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,

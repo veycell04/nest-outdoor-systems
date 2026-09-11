@@ -164,7 +164,7 @@ test("large phone uploads are normalized and measured before generation", async 
   );
 });
 
-test("one visualizer flow removes manual painting and embeds synchronized 3D controls", async () => {
+test("the photo visualizer stays separate from the 3D configurator", async () => {
   const fs = await import("node:fs/promises"),
     source = await fs.readFile(
       new URL("../app/project-visualizer.tsx", import.meta.url),
@@ -178,8 +178,7 @@ test("one visualizer flow removes manual painting and embeds synchronized 3D con
     source,
     /brush-size|Erase mask|Reset mask|Paint the installation/i,
   );
-  assert.match(source, /Customize in 3D/);
-  assert.match(source, /<PergolaViewer/);
+  assert.doesNotMatch(source, /Customize in 3D|<PergolaViewer|advanced-3d|<Canvas/);
   assert.match(source, /Generate My Concept/);
   assert.match(source, /Create Higher-Quality Version/);
   assert.match(source, /90_000/);
@@ -223,7 +222,7 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   assert.match(source, /orientationchange/);
   assert.match(
     source,
-    /context\.clearRect\([\s\S]{0,260}area\.height \* bounds\.height/,
+    /placement\.forEach\([\s\S]{0,500}context\.clip\(\)[\s\S]{0,160}context\.clearRect\(0, 0, canvas\.width, canvas\.height\)/,
   );
   assert.match(
     css,
@@ -233,7 +232,7 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   assert.doesNotMatch(legacy, /drawCover/);
 });
 
-test("result UI keeps the upload as Original and never renders catalog references", async () => {
+test("restored comparison keeps the customer photo as BEFORE and never renders catalog references", async () => {
   const fs = await import("node:fs/promises"),
     client = await fs.readFile(
       new URL("../app/project-visualizer.tsx", import.meta.url),
@@ -243,41 +242,26 @@ test("result UI keeps the upload as Original and never renders catalog reference
       new URL("../app/api/visualize/route.ts", import.meta.url),
       "utf8",
     );
-  assert.match(
-    client,
-    /activeView === "original" \? photo\.url : result\.image/,
-  );
-  assert.match(client, /Original Photo/);
-  assert.match(client, /Your Concept/);
-  assert.match(client, /setActiveView\("concept"\)/);
-  assert.doesNotMatch(
-    client,
-    /Before and after comparison|type="range"[\s\S]{0,120}compare/,
-  );
+  assert.match(client, /className="comparison"/);
+  assert.match(client, /src=\{photo\.url\}[\s\S]{0,160}width=\{photo\.width\}[\s\S]{0,160}height=\{photo\.height\}/);
+  assert.match(client, /src=\{result\.image\}[\s\S]{0,160}width=\{photo\.width\}[\s\S]{0,160}height=\{photo\.height\}/);
+  assert.match(client, />BEFORE</);
+  assert.match(client, />AI CONCEPT</);
+  assert.match(client, /Provided measurements/);
   assert.doesNotMatch(client, /<img[^>]+referenceImages/);
   assert.match(
     route,
-    /Edit Image 1 only\. Install the selected product inside the marked area\./,
-  );
-  assert.match(
-    route,
-    /Image 3 is reference-only and must never replace the customer's property or background\./,
+    /Edit the customer’s uploaded photograph only\. Install the selected NEST product realistically within the identified installation area\./,
   );
   assert.match(
     route,
     /Generated output exactly matched a catalog reference image/,
   );
   assert.match(client, /isGeneratedResultUrl\(/);
-  assert.match(
-    client,
-    /setResult\(null\);[\s\S]{0,500}setActiveView\("original"\)/,
-  );
-  assert.match(
-    route,
-    /Edit the customer photo only\. Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening\./,
-  );
-  assert.match(route, /pink vertical height line/);
-  assert.match(route, /green horizontal width line/);
+  assert.doesNotMatch(client, /setConceptUrl\(product\.referenceImage\)|setResultUrl\(referenceUrl\)/);
+  assert.match(route, /Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening\./);
+  assert.match(route, /four-corner polygon mask/);
+  assert.match(route, /Four-corner installation polygon coordinates/);
   assert.doesNotMatch(route, /input_fidelity/);
   assert.match(route, /responseUrl: payload\.imageUrl/);
   assert.match(route, /image-1-customer-edit-target\.jpg/);
@@ -285,16 +269,40 @@ test("result UI keeps the upload as Original and never renders catalog reference
   assert.match(route, /product-reference-only/);
   assert.match(
     client,
-    /Optional: drag over the photo to mark the installation area/,
-  );
-  assert.match(
-    client,
-    /const element = event\.currentTarget,[\s\S]{0,100}getBoundingClientRect\(\)/,
+    /Click or tap four corners around the intended installation area/,
   );
   assert.match(
     client,
     /context\.fillRect\(0, 0, canvas\.width, canvas\.height\)/,
   );
+  assert.doesNotMatch(client, /PergolaViewer|Customize in 3D|advanced-3d|<Canvas/);
+});
+
+test("Solidroll remains a distinct edit-target request with its own private reference", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    products = await fs.readFile(new URL("../lib/products.ts", import.meta.url), "utf8"),
+    route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
+  assert.match(client, /productId:\s*selected\.id/);
+  assert.match(products, /id:\s*"solidroll"[\s\S]{0,500}referenceImages:\s*\["\/projects\/elevated-solidroll\.jpg"\]/);
+  assert.match(route, /"image-1-customer-edit-target\.jpg"/);
+  assert.match(route, /Generated output exactly matched a catalog reference image/);
+});
+
+test("Konva polygon selection is client-only, touch adjustable, and exports at photo dimensions", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    editor = await fs.readFile(new URL("../app/installation-area-editor.tsx", import.meta.url), "utf8"),
+    route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
+  assert.match(client, /dynamic\([\s\S]{0,120}installation-area-editor[\s\S]{0,80}ssr:\s*false/);
+  assert.match(editor, /from "react-konva"/);
+  assert.match(editor, /onPointerDown/);
+  assert.match(editor, /draggable=\{!disabled\}/);
+  assert.match(editor, /points\.length >= 4/);
+  assert.doesNotMatch(editor, /referenceImages|productReference|<Image/);
+  assert.match(client, /canvas\.width = photo\.width;[\s\S]{0,80}canvas\.height = photo\.height;/);
+  assert.match(route, /photoInfo\.width !== maskInfo\.width[\s\S]{0,80}photoInfo\.height !== maskInfo\.height/);
+  assert.match(client, />\s*Reset area\s*</);
 });
 
 test("server cache keys the optimized photo and synchronized configuration", async () => {
