@@ -1613,7 +1613,9 @@ button:disabled {
   position: absolute;
   z-index: 4;
   pointer-events: none;
-  border: 2px solid #d8b08e;
+  border: 1px dashed #ffffffb8;
+  border-left: 3px solid #ef5da8;
+  border-bottom: 3px solid #46c77a;
   background: #d8b08e2b;
   box-shadow: 0 0 0 1px #101715;
 }

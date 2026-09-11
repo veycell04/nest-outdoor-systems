@@ -103,6 +103,7 @@ export function logTransfer(details: {
   metadataBytes?: number | null;
   generationCount?: number | null;
   generationLimit?: number | null;
+  responseUrl?: string | null;
 }) {
   console.info(
     JSON.stringify({
@@ -117,6 +118,7 @@ export function logTransfer(details: {
       metadataBytes: details.metadataBytes ?? null,
       generationCount: details.generationCount ?? null,
       generationLimit: details.generationLimit ?? null,
+      responseUrl: details.responseUrl ?? null,
     }),
   );
 }

@@ -229,3 +229,14 @@ export const products: ProductDefinition[] = [
 export function getProduct(id: string) {
   return products.find((product) => product.id === id);
 }
+
+export function isGeneratedResultUrl(
+  generatedResultUrl: string,
+  productReferenceUrls: string[],
+  baseUrl: string,
+) {
+  const generated = new URL(generatedResultUrl, baseUrl).href;
+  return !productReferenceUrls.some(
+    (reference) => new URL(reference, baseUrl).href === generated,
+  );
+}

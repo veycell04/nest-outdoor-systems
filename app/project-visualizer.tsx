@@ -4,7 +4,11 @@ import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { upload } from "@vercel/blob/client";
-import { products, type ProductDefinition } from "../lib/products";
+import {
+  isGeneratedResultUrl,
+  products,
+  type ProductDefinition,
+} from "../lib/products";
 import { PergolaViewer } from "./pergola-viewer";
 
 export type VisualizerHandoff = {
@@ -513,6 +517,7 @@ export function ProjectVisualizer({
               screens,
               roofOpen,
               measurements,
+              placement,
               unit: "ft",
               quality: highQuality ? "high" : "preview",
             },
@@ -532,6 +537,16 @@ export function ProjectVisualizer({
       if (typeof payload?.imageUrl !== "string")
         throw new Error(
           `The image service did not return a usable concept. Reference: ${requestId}`,
+        );
+      if (
+        !isGeneratedResultUrl(
+          payload.imageUrl,
+          selected.referenceImages,
+          window.location.href,
+        )
+      )
+        throw new Error(
+          `The image service returned the product reference instead of a generated concept. Reference: ${requestId}`,
         );
       const normalizedConceptUrl = await normalizeConcept(payload.imageUrl),
         concept: Concept = {
@@ -558,6 +573,8 @@ export function ProjectVisualizer({
         conceptImage: payload.imageUrl,
       });
     } catch (error) {
+      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
+      setResult(null);
       const message = timedOut
         ? `Generation timed out after 90 seconds. Reference: ${requestId}`
         : controller.signal.aborted
@@ -823,6 +840,8 @@ export function ProjectVisualizer({
           <div className="placement-help">
             <small>
               Optional: drag over the photo to mark the installation area.
+              The pink vertical edge marks the left boundary and height; the
+              green horizontal edge marks the bottom boundary and width.
             </small>
             {placement && (
               <button type="button" onClick={() => setPlacement(null)}>

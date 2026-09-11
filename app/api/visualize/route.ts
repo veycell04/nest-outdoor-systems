@@ -317,9 +317,14 @@ export async function POST(request: Request) {
       typeof specs.measurements === "object" && specs.measurements
         ? specs.measurements
         : {},
+    placement =
+      typeof specs.placement === "object" && specs.placement
+        ? specs.placement
+        : null,
     unit = specs.unit === "m" ? "meters" : "feet and inches",
     owner = photoId.split("/")[1],
     cacheKey = createHash("sha256")
+      .update("customer-photo-edit-v2-solidroll-boundaries")
       .update(Buffer.from(photoBytes))
       .update(Buffer.from(maskBytes))
       .update(
@@ -331,6 +336,7 @@ export async function POST(request: Request) {
           screens,
           roofOpen,
           measurements,
+          placement,
           unit,
           requestedQuality,
         }),
@@ -352,6 +358,7 @@ export async function POST(request: Request) {
       requestId,
       stage: "cache_hit",
       productId,
+      responseUrl: payload.imageUrl,
       responseBytes: new TextEncoder().encode(JSON.stringify(payload))
         .byteLength,
     });
@@ -379,10 +386,17 @@ export async function POST(request: Request) {
       ),
     );
   }
+  const productInstruction =
+    product.id === "solidroll"
+      ? "Edit the customer photo only. Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening. Preserve everything outside the marked installation area. The product reference image is appearance guidance only and must not replace the customer photo."
+      : "Edit Image 1 only. Install the selected product inside the marked area. Image 3 is reference-only and must never replace the customer's property or background.";
   const prompt = [
     `Image 1 is the customer's property photo and the only edit target. Image 2 is the placement mask and restricts every modification to its transparent marked area. Image 3 and any later images are product appearance references only.`,
-    `Edit Image 1 only. Install the selected product inside the marked area. Image 3 is reference-only and must never replace the customer's property or background.`,
+    productInstruction,
     `Install this exact product type: ${product.label}. Verified product description: ${product.details}`,
+    product.id === "solidroll"
+      ? `Treat the marked area's left boundary as the pink vertical height line and its bottom boundary as the green horizontal width line. Fit the Solidroll realistically across that storefront window opening. Preserve the storefront, brick, windows, sidewalk, signage, camera angle, mounting surfaces, and surroundings. Marked placement coordinates: ${JSON.stringify(placement)}.`
+      : `Marked placement coordinates: ${JSON.stringify(placement)}.`,
     `Use the product reference only for the product's construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image building, background, ground, landscaping, furniture, sky, or surroundings.`,
     `Finish: ${finish}. Options: ${options.length ? options.join(", ") : "none selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
     `Preserve every pixel outside the placement mask, including the customer's building, windows, doors, ground, landscaping, people, furniture, perspective, camera position, crop, and surroundings. Infer product rotation and perspective from Image 1 and the placement area. Match mounting, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,
@@ -436,6 +450,7 @@ export async function POST(request: Request) {
       : process.env.OPENAI_IMAGE_PREVIEW_QUALITY || "low",
   );
   outbound.append("size", "auto");
+  outbound.append("input_fidelity", "high");
   outbound.append("output_format", "jpeg");
   outbound.append(
     "output_compression",
@@ -546,6 +561,7 @@ export async function POST(request: Request) {
       requestId,
       stage: "response_sent",
       productId,
+      responseUrl: payload.imageUrl,
       responseBytes: new TextEncoder().encode(JSON.stringify(payload))
         .byteLength,
     });

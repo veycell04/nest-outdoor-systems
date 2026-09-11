@@ -254,10 +254,7 @@ test("result UI keeps the upload as Original and never renders catalog reference
     client,
     /Before and after comparison|type="range"[\s\S]{0,120}compare/,
   );
-  assert.doesNotMatch(
-    client,
-    /referenceImages|elevated-cassette-awning|elevated-wintent/,
-  );
+  assert.doesNotMatch(client, /<img[^>]+referenceImages/);
   assert.match(
     route,
     /Edit Image 1 only\. Install the selected product inside the marked area\./,
@@ -270,6 +267,19 @@ test("result UI keeps the upload as Original and never renders catalog reference
     route,
     /Generated output exactly matched a catalog reference image/,
   );
+  assert.match(client, /isGeneratedResultUrl\(/);
+  assert.match(
+    client,
+    /setResult\(null\);[\s\S]{0,500}setActiveView\("original"\)/,
+  );
+  assert.match(
+    route,
+    /Edit the customer photo only\. Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening\./,
+  );
+  assert.match(route, /pink vertical height line/);
+  assert.match(route, /green horizontal width line/);
+  assert.match(route, /outbound\.append\("input_fidelity", "high"\)/);
+  assert.match(route, /responseUrl: payload\.imageUrl/);
   assert.match(route, /image-1-customer-edit-target\.jpg/);
   assert.match(route, /image-2-placement-mask\.png/);
   assert.match(route, /product-reference-only/);
@@ -438,6 +448,25 @@ test("every catalog product has a deployed visualizer reference", async () => {
     assert.deepEqual(products.find((item) => item.id === id).referenceImages, [
       path,
     ]);
+});
+
+test("a generated result URL cannot equal its product reference URL", async () => {
+  const { isGeneratedResultUrl } = await vite.ssrLoadModule(
+    "/lib/products.ts",
+  );
+  const reference = "/projects/elevated-solidroll.jpg";
+  assert.equal(
+    isGeneratedResultUrl(reference, [reference], "https://nestpergola.com/"),
+    false,
+  );
+  assert.equal(
+    isGeneratedResultUrl(
+      "/api/visualize/result?objectId=visualizer%2Fresult.jpg",
+      [reference],
+      "https://nestpergola.com/",
+    ),
+    true,
+  );
 });
 
 test("Wintent is complete across catalog, visualization, gallery and video", async () => {
