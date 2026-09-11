@@ -34,7 +34,6 @@ export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) 
   const [scale, setScale] = useState(82);
   const [horizontal, setHorizontal] = useState(0);
   const [vertical, setVertical] = useState(-4);
-  const [rotation, setRotation] = useState(-8);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLImageElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -63,7 +62,6 @@ export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) 
     setScale(82);
     setHorizontal(0);
     setVertical(-4);
-    setRotation(-8);
     setFrameColor("#303332");
     setMessage("Placement reset.");
   };
@@ -104,7 +102,7 @@ export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) 
               <PerspectiveCamera makeDefault position={[9.8, 6.3, 11.5]} fov={37} />
               <ambientLight intensity={1.65} />
               <directionalLight position={[4, 10, 7]} intensity={3.2} castShadow />
-              <group position={[horizontal * .052, vertical * -.035 - 1.05, 0]} rotation={[0, rotation * Math.PI / 180, 0]} scale={scale / 100}>
+              <group position={[horizontal * .052, vertical * -.035 - 1.05, 0]} scale={scale / 100}>
                 <PergolaModel product={selected.viewer} width={12} depth={15} attached={false} roofOpen={28} color={frameColor} lighting screens={false} presentation="overlay" />
               </group>
               <Environment preset="city" />
@@ -133,7 +131,6 @@ export function ProjectVisualizer({ onRequestProject }: ProjectVisualizerProps) 
             <label>Size <span>{scale}%</span><input type="range" min="48" max="145" value={scale} onChange={(event) => setScale(Number(event.target.value))}/></label>
             <label>Left / right <span>{horizontal}</span><input type="range" min="-42" max="42" value={horizontal} onChange={(event) => setHorizontal(Number(event.target.value))}/></label>
             <label>Up / down <span>{vertical}</span><input type="range" min="-34" max="28" value={vertical} onChange={(event) => setVertical(Number(event.target.value))}/></label>
-            <label>Angle <span>{rotation}°</span><input type="range" min="-42" max="42" value={rotation} onChange={(event) => setRotation(Number(event.target.value))}/></label>
           </div>
 
           <div className="visualizer-actions">

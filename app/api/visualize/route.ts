@@ -321,6 +321,7 @@ export async function POST(request: Request) {
     owner = photoId.split("/")[1],
     cacheKey = createHash("sha256")
       .update(Buffer.from(photoBytes))
+      .update(Buffer.from(maskBytes))
       .update(
         JSON.stringify({
           productId,
@@ -379,11 +380,12 @@ export async function POST(request: Request) {
     );
   }
   const prompt = [
-    `Create a photorealistic after-installation architectural concept using the first image as the customer's home and editing only the transparent masked installation area.`,
+    `Image 1 is the customer's property photo and the only edit target. Image 2 is the placement mask and restricts every modification to its transparent marked area. Image 3 and any later images are product appearance references only.`,
+    `Edit Image 1 only. Install the selected product inside the marked area. Image 3 is reference-only and must never replace the customer's property or background.`,
     `Install this exact product type: ${product.label}. Verified product description: ${product.details}`,
-    `Use the later images only as NEST product references. Match their construction language and proportions without copying their background.`,
+    `Use the product reference only for the product's construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image building, background, ground, landscaping, furniture, sky, or surroundings.`,
     `Finish: ${finish}. Options: ${options.length ? options.join(", ") : "none selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
-    `Preserve the house, doors, windows, landscaping, people, furniture, camera position, crop, and all unmasked surroundings. Match perspective, mounting, real-world materials, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,
+    `Preserve every pixel outside the placement mask, including the customer's building, windows, doors, ground, landscaping, people, furniture, perspective, camera position, crop, and surroundings. Infer product rotation and perspective from Image 1 and the placement area. Match mounting, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,
   ].join("\n");
   const outbound = new FormData();
   outbound.append(
@@ -393,8 +395,14 @@ export async function POST(request: Request) {
   outbound.append(
     "image[]",
     new Blob([photoBytes], { type: photoMeta.contentType }),
-    "project.jpg",
+    "image-1-customer-edit-target.jpg",
   );
+  outbound.append(
+    "mask",
+    new Blob([maskBytes], { type: "image/png" }),
+    "image-2-placement-mask.png",
+  );
+  const referenceHashes: string[] = [];
   try {
     for (const [index, path] of product.referenceImages.entries()) {
       if (!/^\/projects\/[A-Za-z0-9._-]+$/.test(path))
@@ -403,12 +411,13 @@ export async function POST(request: Request) {
       if (!reference.ok)
         throw new Error(`Reference image returned HTTP ${reference.status}`);
       const bytes = Buffer.from(await reference.arrayBuffer());
+      referenceHashes.push(createHash("sha256").update(bytes).digest("hex"));
       outbound.append(
         "image[]",
         new Blob([bytes], {
           type: reference.headers.get("content-type") || "image/jpeg",
         }),
-        `reference-${index}${path.endsWith(".png") ? ".png" : ".jpg"}`,
+        `image-${index + 3}-product-reference-only${path.endsWith(".png") ? ".png" : ".jpg"}`,
       );
     }
   } catch (error) {
@@ -419,11 +428,6 @@ export async function POST(request: Request) {
       error,
     );
   }
-  outbound.append(
-    "mask",
-    new Blob([maskBytes], { type: "image/png" }),
-    "mask.png",
-  );
   outbound.append("prompt", prompt);
   outbound.append(
     "quality",
@@ -490,6 +494,18 @@ export async function POST(request: Request) {
       );
     }
     const resultBytes = Buffer.from(result.data[0].b64_json, "base64");
+    const resultHash = createHash("sha256").update(resultBytes).digest("hex");
+    if (referenceHashes.includes(resultHash)) {
+      recent.pop();
+      return fail(
+        "image_generation",
+        502,
+        "The image service returned an invalid concept. Please retry.",
+        new Error("Generated output exactly matched a catalog reference image"),
+        null,
+        providerRequestId,
+      );
+    }
     if (resultBytes.byteLength > RESULT_MAX_BYTES) {
       recent.pop();
       return fail(

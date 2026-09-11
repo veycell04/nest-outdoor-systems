@@ -176,7 +176,7 @@ test("one visualizer flow removes manual painting and embeds synchronized 3D con
     );
   assert.doesNotMatch(
     source,
-    /getBoundingClientRect|pointerdown|brush-size|Erase mask|Reset mask|Paint the installation/i,
+    /brush-size|Erase mask|Reset mask|Paint the installation/i,
   );
   assert.match(source, /Customize in 3D/);
   assert.match(source, /<PergolaViewer/);
@@ -223,7 +223,7 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   assert.match(source, /orientationchange/);
   assert.match(
     source,
-    /context\.clearRect\(bounds\.x, bounds\.y, bounds\.width, bounds\.height\)/,
+    /context\.clearRect\([\s\S]{0,260}area\.height \* bounds\.height/,
   );
   assert.match(
     css,
@@ -231,6 +231,60 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   );
   assert.match(legacy, /function drawContain/);
   assert.doesNotMatch(legacy, /drawCover/);
+});
+
+test("result UI keeps the upload as Original and never renders catalog references", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(
+      new URL("../app/project-visualizer.tsx", import.meta.url),
+      "utf8",
+    ),
+    route = await fs.readFile(
+      new URL("../app/api/visualize/route.ts", import.meta.url),
+      "utf8",
+    );
+  assert.match(
+    client,
+    /activeView === "original" \? photo\.url : result\.image/,
+  );
+  assert.match(client, /Original Photo/);
+  assert.match(client, /Your Concept/);
+  assert.match(client, /setActiveView\("concept"\)/);
+  assert.doesNotMatch(
+    client,
+    /Before and after comparison|type="range"[\s\S]{0,120}compare/,
+  );
+  assert.doesNotMatch(
+    client,
+    /referenceImages|elevated-cassette-awning|elevated-wintent/,
+  );
+  assert.match(
+    route,
+    /Edit Image 1 only\. Install the selected product inside the marked area\./,
+  );
+  assert.match(
+    route,
+    /Image 3 is reference-only and must never replace the customer's property or background\./,
+  );
+  assert.match(
+    route,
+    /Generated output exactly matched a catalog reference image/,
+  );
+  assert.match(route, /image-1-customer-edit-target\.jpg/);
+  assert.match(route, /image-2-placement-mask\.png/);
+  assert.match(route, /product-reference-only/);
+  assert.match(
+    client,
+    /Optional: drag over the photo to mark the installation area/,
+  );
+  assert.match(
+    client,
+    /const element = event\.currentTarget,[\s\S]{0,100}getBoundingClientRect\(\)/,
+  );
+  assert.match(
+    client,
+    /context\.fillRect\(0, 0, canvas\.width, canvas\.height\)/,
+  );
 });
 
 test("server cache keys the optimized photo and synchronized configuration", async () => {

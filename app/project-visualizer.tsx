@@ -2,6 +2,7 @@
 
 import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { products, type ProductDefinition } from "../lib/products";
 import { PergolaViewer } from "./pergola-viewer";
@@ -12,6 +13,7 @@ export type VisualizerHandoff = {
   conceptImage?: string;
 };
 type Measurements = { width: string; depth: string; height: string };
+type Placement = { x: number; y: number; width: number; height: number };
 type Concept = {
   image: string;
   productId: string;
@@ -132,17 +134,19 @@ export function ProjectVisualizer({
     [screens, setScreens] = useState(false),
     [roofOpen, setRoofOpen] = useState(35);
   const [result, setResult] = useState<Concept | null>(null),
-    [compare, setCompare] = useState(50),
+    [activeView, setActiveView] = useState<"original" | "concept">("original"),
     [advanced, setAdvanced] = useState(false),
     [generating, setGenerating] = useState(false),
     [status, setStatus] = useState(""),
     [uploadProgress, setUploadProgress] = useState(0),
     [elapsed, setElapsed] = useState(0),
+    [placement, setPlacement] = useState<Placement | null>(null),
     [displayBounds, setDisplayBounds] =
       useState<ReturnType<typeof containRect>>(null);
   const abortRef = useRef<AbortController | null>(null),
     timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null),
-    stageRef = useRef<HTMLDivElement | null>(null);
+    stageRef = useRef<HTMLDivElement | null>(null),
+    placementStartRef = useRef<{ x: number; y: number } | null>(null);
   const selected = useMemo(
     () =>
       products.find((product) => product.id === selectedProductId) ||
@@ -189,6 +193,12 @@ export function ProjectVisualizer({
     },
     [photo],
   );
+  useEffect(
+    () => () => {
+      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
+    },
+    [result],
+  );
   useEffect(() => {
     recalculateDisplayBounds();
     const stage = stageRef.current;
@@ -206,6 +216,7 @@ export function ProjectVisualizer({
 
   async function choosePhoto(file?: File) {
     if (!file) return;
+    abortRef.current?.abort();
     if (
       !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
       file.size > 30 * 1024 * 1024
@@ -253,6 +264,8 @@ export function ProjectVisualizer({
         height: canvas.height,
       });
       setResult(null);
+      setActiveView("original");
+      setPlacement(null);
       setStatus(
         `Photo ready · ${canvas.width} × ${canvas.height} · ${(normalized.size / 1024 / 1024).toFixed(1)} MB`,
       );
@@ -277,8 +290,81 @@ export function ProjectVisualizer({
         photo.height,
       );
     if (!context || !bounds) throw new Error("Mask preparation failed");
-    context.clearRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const area = placement || { x: 0, y: 0, width: 1, height: 1 };
+    context.clearRect(
+      bounds.x + area.x * bounds.width,
+      bounds.y + area.y * bounds.height,
+      area.width * bounds.width,
+      area.height * bounds.height,
+    );
     return toPng(canvas);
+  }
+  function placementPoint(event: ReactPointerEvent<HTMLDivElement>) {
+    const element = event.currentTarget,
+      rect = element.getBoundingClientRect();
+    if (!element.isConnected || rect.width <= 0 || rect.height <= 0)
+      return null;
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+    };
+  }
+  function startPlacement(event: ReactPointerEvent<HTMLDivElement>) {
+    if (
+      (event.target as HTMLElement).closest("button") ||
+      activeView !== "original"
+    )
+      return;
+    const point = placementPoint(event);
+    if (!point) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    placementStartRef.current = point;
+    setPlacement({ ...point, width: 0, height: 0 });
+  }
+  function movePlacement(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = placementStartRef.current;
+    if (!start) return;
+    const point = placementPoint(event);
+    if (!point) return;
+    setPlacement({
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    });
+  }
+  function finishPlacement() {
+    placementStartRef.current = null;
+    setPlacement((area) =>
+      area && area.width >= 0.03 && area.height >= 0.03 ? area : null,
+    );
+  }
+  async function normalizeConcept(imageUrl: string) {
+    if (!photo) throw new Error("Photo is not ready");
+    const response = await fetch(imageUrl);
+    if (!response.ok)
+      throw new Error("The generated concept could not be loaded.");
+    const bitmap = await createImageBitmap(await response.blob()),
+      canvas = document.createElement("canvas");
+    canvas.width = photo.width;
+    canvas.height = photo.height;
+    const context = canvas.getContext("2d");
+    if (!context)
+      throw new Error("The generated concept could not be prepared.");
+    context.fillStyle = "#161b19";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    drawContain(
+      context,
+      bitmap,
+      bitmap.width,
+      bitmap.height,
+      canvas.width,
+      canvas.height,
+    );
+    bitmap.close();
+    return URL.createObjectURL(await toJpeg(canvas, 0.9));
   }
   function summary(product: ProductDefinition, concept = Boolean(result)) {
     const dims =
@@ -448,20 +534,22 @@ export function ProjectVisualizer({
         throw new Error(
           `The image service did not return a usable concept. Reference: ${requestId}`,
         );
-      const concept: Concept = {
-        image: payload.imageUrl,
-        productId: selected.id,
-        productLabel: selected.label,
-        measurements: { ...measurements },
-        unit: "ft",
-        finish,
-        structure,
-        lighting,
-        screens,
-        quality: highQuality ? "high" : "preview",
-      };
+      const normalizedConceptUrl = await normalizeConcept(payload.imageUrl),
+        concept: Concept = {
+          image: normalizedConceptUrl,
+          productId: selected.id,
+          productLabel: selected.label,
+          measurements: { ...measurements },
+          unit: "ft",
+          finish,
+          structure,
+          lighting,
+          screens,
+          quality: highQuality ? "high" : "preview",
+        };
+      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
       setResult(concept);
-      setCompare(50);
+      setActiveView("concept");
       setStatus(
         `${disclaimer}${payload.cached ? " Previous matching result reused." : ""}`,
       );
@@ -483,6 +571,7 @@ export function ProjectVisualizer({
           ? message
           : `${message} Reference: ${requestId}`,
       );
+      setActiveView("original");
     } finally {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -593,6 +682,10 @@ export function ProjectVisualizer({
           ) : (
             <div
               className="contained-media"
+              onPointerDown={startPlacement}
+              onPointerMove={movePlacement}
+              onPointerUp={finishPlacement}
+              onPointerCancel={finishPlacement}
               style={
                 displayBounds
                   ? {
@@ -605,23 +698,36 @@ export function ProjectVisualizer({
               }
             >
               {result ? (
-                <div
-                  className="comparison"
-                  style={{ "--compare": `${compare}%` } as React.CSSProperties}
-                >
+                <div className="result-viewer">
                   <img
-                    src={photo.url}
-                    alt="Original project area"
+                    src={activeView === "original" ? photo.url : result.image}
+                    alt={
+                      activeView === "original"
+                        ? "Original uploaded project photo"
+                        : `Your concept showing ${result.productLabel}`
+                    }
                     onLoad={recalculateDisplayBounds}
                   />
-                  <div className="comparison-after">
-                    <img
-                      src={result.image}
-                      alt={`Concept visualization showing ${result.productLabel}`}
-                    />
+                  <div
+                    className="result-view-toggle"
+                    role="group"
+                    aria-label="Choose visualizer image"
+                  >
+                    <button
+                      type="button"
+                      className={activeView === "original" ? "active" : ""}
+                      onClick={() => setActiveView("original")}
+                    >
+                      Original Photo
+                    </button>
+                    <button
+                      type="button"
+                      className={activeView === "concept" ? "active" : ""}
+                      onClick={() => setActiveView("concept")}
+                    >
+                      Your Concept
+                    </button>
                   </div>
-                  <span className="compare-label before">Original</span>
-                  <span className="compare-label after">Concept</span>
                   {(result.measurements.width ||
                     result.measurements.depth ||
                     result.measurements.height) && (
@@ -649,14 +755,6 @@ export function ProjectVisualizer({
                       Previous result · {result.productLabel}
                     </span>
                   )}
-                  <input
-                    aria-label="Before and after comparison"
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={compare}
-                    onChange={(event) => setCompare(Number(event.target.value))}
-                  />
                 </div>
               ) : (
                 <img
@@ -665,6 +763,19 @@ export function ProjectVisualizer({
                   alt="Uploaded project area"
                   onLoad={recalculateDisplayBounds}
                 />
+              )}
+              {placement && activeView === "original" && (
+                <div
+                  className="placement-area"
+                  style={{
+                    left: `${placement.x * 100}%`,
+                    top: `${placement.y * 100}%`,
+                    width: `${placement.width * 100}%`,
+                    height: `${placement.height * 100}%`,
+                  }}
+                >
+                  <span>Placement area</span>
+                </div>
               )}
             </div>
           )}
@@ -710,6 +821,16 @@ export function ProjectVisualizer({
               </small>
             </span>
           </label>
+          <div className="placement-help">
+            <small>
+              Optional: drag over the photo to mark the installation area.
+            </small>
+            {placement && (
+              <button type="button" onClick={() => setPlacement(null)}>
+                Clear area
+              </button>
+            )}
+          </div>
           {selected.pricingNote && (
             <p className="reference-warning">{selected.pricingNote}</p>
           )}
@@ -727,7 +848,14 @@ export function ProjectVisualizer({
             Choose product
             <select
               value={selected.id}
-              onChange={(event) => onProductChange(event.target.value)}
+              onChange={(event) => {
+                abortRef.current?.abort();
+                if (result?.image.startsWith("blob:"))
+                  URL.revokeObjectURL(result.image);
+                setResult(null);
+                setActiveView("original");
+                onProductChange(event.target.value);
+              }}
             >
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
