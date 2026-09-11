@@ -377,7 +377,6 @@ export function ProjectVisualizer({
         .join(", ") || "None provided";
     return [
       `Product: ${product.label}`,
-      ...(product.pricingNote ? [`Pricing: ${product.pricingNote}`] : []),
       `Frame: ${finish}`,
       `Structure: ${structure}`,
       `Lighting: ${lighting ? "Yes" : "No"}`,
@@ -831,9 +830,6 @@ export function ProjectVisualizer({
               </button>
             )}
           </div>
-          {selected.pricingNote && (
-            <p className="reference-warning">{selected.pricingNote}</p>
-          )}
           <div className="ai-step">
             <span>02</span>
             <div>

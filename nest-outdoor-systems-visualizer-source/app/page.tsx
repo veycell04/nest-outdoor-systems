@@ -4,11 +4,9 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, ChevronDown, ImagePlus, Menu, Ruler, Sparkles, X } from "lucide-react";
 import { PergolaViewer } from "./pergola-viewer";
 import { ProjectVisualizer } from "./project-visualizer";
-import { pricedSystems } from "./pricing";
+import { products } from "../../lib/products";
 
-const systems = [
-  ...pricedSystems.map((item) => item.id === "awning" ? { ...item, label: "Full Cassette Awning" } : item),
-];
+const systems = products;
 
 const projects = [
   { image: "/projects/elevated-pergola.jpeg", title: "Classic PVC Pergola", type: "Retractable Roof", system: "pvc" },
@@ -63,7 +61,7 @@ export default function Home() {
           <a href="#systems" onClick={() => setMenu(false)}>Systems</a>
           <a href="#visualize" onClick={() => setMenu(false)}>Visualizer</a>
           <a href="#process" onClick={() => setMenu(false)}>Process</a>
-          <a href="#estimate" onClick={() => setMenu(false)}>Project budget</a>
+          <a href="#customize" onClick={() => setMenu(false)}>Customize</a>
         </nav>
         <a className="nav-cta" href="#contact">Start a project <ArrowRight size={16} /></a>
         <button className="menu-button" onClick={() => setMenu(!menu)} aria-label="Toggle navigation">{menu ? <X /> : <Menu />}</button>
@@ -92,7 +90,7 @@ export default function Home() {
           <h2 id="showcase-title">Three systems.<br/><em>One outdoor life.</em></h2>
           <p>See the details that transform an open terrace into a finished outdoor room: motorized louvers, integrated lighting and glass enclosures.</p>
           <div className="showcase-actions">
-            <a className="button light" href="#estimate">Plan your project <ArrowRight size={18} /></a>
+            <a className="button light" href="#customize">Plan your project <ArrowRight size={18} /></a>
             <a className="text-link" href="#systems">View all systems <ArrowRight size={17} /></a>
           </div>
         </div>
@@ -124,10 +122,10 @@ export default function Home() {
       <section id="systems" className="projects-section section">
         <div className="projects-head">
           <div><p className="eyebrow dark"><span /> Outdoor living systems</p><h2>See the work.<br/><em>Choose your system.</em></h2></div>
-          <p>Each photograph shows a system we produce. Select a project to open its matching product in the estimator.</p>
+          <p>Each photograph shows a system we produce. Select a project to open its matching customization options.</p>
         </div>
         <div className="project-gallery">
-          {projects.map((project, index) => <button type="button" className={`project-tile tile-${index + 1}`} key={project.image} onClick={() => { setSystem(project.system); document.getElementById("estimate")?.scrollIntoView({ behavior: "smooth" }); }} aria-label={`Plan a ${project.title} project`}>
+          {projects.map((project, index) => <button type="button" className={`project-tile tile-${index + 1}`} key={project.image} onClick={() => { setSystem(project.system); document.getElementById("customize")?.scrollIntoView({ behavior: "smooth" }); }} aria-label={`Plan a ${project.title} project`}>
             <img src={project.image} alt={`Completed ${project.title} project`} loading={index > 1 ? "lazy" : "eager"}/>
             <span className="project-caption"><span>{project.type}</span><strong>{project.title}</strong><small>0{index + 1}</small></span>
           </button>)}
@@ -148,14 +146,14 @@ export default function Home() {
         </aside>
       </section>
 
-      <section id="estimate" className="estimate-section section">
-        <div className="estimate-copy">
-          <p className="eyebrow dark"><span /> Project budget request</p>
+      <section id="customize" className="customize-section section">
+        <div className="customize-copy">
+          <p className="eyebrow dark"><span /> Project customization</p>
           <h2>Start with your space.<br/><em>We’ll shape the rest.</em></h2>
-          <p>Share what you know and our design team will prepare a preliminary installed budget for your project.</p>
+          <p>Share what you know and customize the system for your project.</p>
           <ul><li><Check/> No obligation</li><li><Check/> Measurements are optional</li><li><Check/> Your photos stay private</li></ul>
         </div>
-        <div className="estimator-card">
+        <div className="customizer-card">
           <PergolaViewer product={selectedSystem.viewer} width={viewerWidth} depth={viewerDepth} attached={structure === "attached"} roofOpen={roofOpen} color={frameColor} lighting={lighting} screens={screens} />
           <div className="viewer-controls">
             <label>Opening position <span>{roofOpen}%</span><input aria-label="Opening position" type="range" min="0" max="100" value={roofOpen} onChange={(e) => setRoofOpen(Number(e.target.value))}/></label>
@@ -173,8 +171,7 @@ export default function Home() {
           <fieldset><legend>Construction</legend><div className="choice-row"><button type="button" className={structure === "attached" ? "selected" : ""} onClick={() => setStructure("attached")}>Attached</button><button type="button" className={structure === "freestanding" ? "selected" : ""} onClick={() => setStructure("freestanding")}>Freestanding</button></div></fieldset>
           <fieldset><legend>Comfort options</legend><div className="option-list"><label><input type="checkbox" checked={lighting} onChange={(e) => setLighting(e.target.checked)}/><span><Check/></span>Integrated LED lighting</label><label><input type="checkbox" checked={screens} onChange={(e) => setScreens(e.target.checked)}/><span><Check/></span>Motorized ZIP screens</label></div></fieldset>
           <label className="upload"><input type="file" accept="image/*" onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}/><ImagePlus/><span><strong>{fileName || "Add a photo of your space (optional)"}</strong><small>{fileName ? "Photo selected" : "JPG or PNG · up to 10 MB"}</small></span></label>
-          <div className="estimate-result"><div><small>Next step</small><strong>Your project is ready for review</strong><span>Send your details to receive a preliminary installed budget from our design team.</span></div><a href="#contact" aria-label="Continue to consultation"><ArrowRight/></a></div>
-          <p className="disclaimer">Online information is for planning only and is not a binding quotation. Final pricing follows site measurement, engineering review, selected options, delivery, and installation requirements.</p>
+          <div className="consultation-result"><div><small>Next step</small><strong>Your project is ready for review</strong><span>Send your details to discuss the project with our design team.</span></div><a href="#contact" aria-label="Continue to consultation"><ArrowRight/></a></div>
         </div>
       </section>
 
@@ -185,7 +182,7 @@ export default function Home() {
           <div className="contact-row"><label>Phone <span>optional</span><input name="phone" type="tel" autoComplete="tel" /></label><label>Project ZIP code <span>optional</span><input name="zip" type="text" inputMode="numeric" autoComplete="postal-code" /></label></div>
           <label>Product or service<select value={system} onChange={(event) => setSystem(event.target.value)}>{systems.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
           <label>How can we help? <span>optional</span><textarea name="message" rows={4} placeholder="Tell us about your patio, terrace or commercial space." /></label>
-          <button className="button light" type="submit">Request my project budget <ArrowRight size={18}/></button>
+          <button className="button light" type="submit">Discuss My Project <ArrowRight size={18}/></button>
           <small>This opens your email app with the project information ready to send.</small>
         </form>
         <div className="footer-line"><a className="brand" href="#top" aria-label="NEST Outdoor Systems home"><img src="/brand/nest-outdoor-systems-final.png" alt="NEST Outdoor Systems"/></a><p>Serving residential and commercial projects across the United States</p><p>© 2026 NEST Outdoor Systems</p></div>

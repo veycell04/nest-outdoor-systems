@@ -389,18 +389,16 @@ test("Sliding Glass uses its deployed concept visualization reference", async ()
   );
 });
 
-test("Guillotine Glass and Solidroll keep distinct IDs, references and pricing", async () => {
+test("Guillotine Glass and Solidroll keep distinct IDs and references", async () => {
   const fs = await import("node:fs/promises"),
-    [{ products }, { pricedSystems }, page, layout, route] = await Promise.all([
+    [{ products }, page, layout, route] = await Promise.all([
       vite.ssrLoadModule("/lib/products.ts"),
-      vite.ssrLoadModule("/app/pricing.ts"),
       fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
       fs.readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
       fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8"),
     ]);
   const guillotine = products.find((item) => item.id === "guillotine"),
-    solidroll = products.find((item) => item.id === "solidroll"),
-    solidrollPricing = pricedSystems.find((item) => item.id === "solidroll");
+    solidroll = products.find((item) => item.id === "solidroll");
 
   assert.equal(guillotine.label, "Guillotine Glass");
   assert.deepEqual(guillotine.referenceImages, [
@@ -410,9 +408,6 @@ test("Guillotine Glass and Solidroll keep distinct IDs, references and pricing",
   assert.deepEqual(solidroll.referenceImages, [
     "/projects/elevated-solidroll.jpg",
   ]);
-  assert.equal(solidrollPricing.customConsultationRequired, true);
-  assert.equal(solidrollPricing.included, "Custom consultation required");
-  assert.deepEqual(solidrollPricing.prices, []);
   assert.match(page, /elevated-solidroll\.jpg/);
   assert.match(page, /02 · Guillotine Glass/);
   assert.match(page, /03 · Solidroll/);
@@ -423,11 +418,8 @@ test("Guillotine Glass and Solidroll keep distinct IDs, references and pricing",
   assert.doesNotMatch(route, /node:fs|readFile\(/);
 });
 
-test("every priced system has a deployed visualizer reference", async () => {
-  const [{ pricedSystems }, { products }] = await Promise.all([
-    vite.ssrLoadModule("/app/pricing.ts"),
-    vite.ssrLoadModule("/lib/products.ts"),
-  ]);
+test("every catalog product has a deployed visualizer reference", async () => {
+  const { products } = await vite.ssrLoadModule("/lib/products.ts");
   const expected = {
     bioclimatic_double: "/projects/elevated-bioclimatic-double.png",
     rolling_roof: "/projects/elevated-rolling-roof.png",
@@ -438,10 +430,8 @@ test("every priced system has a deployed visualizer reference", async () => {
     wintent: "/projects/elevated-wintent.png",
     solidroll: "/projects/elevated-solidroll.jpg",
   };
-  for (const priced of pricedSystems) {
-    const product = products.find((item) => item.id === priced.id);
-    assert.ok(product, `missing product ${priced.id}`);
-    assert.ok(product.referenceImages.length, `missing reference ${priced.id}`);
+  for (const product of products) {
+    assert.ok(product.referenceImages.length, `missing reference ${product.id}`);
     assert.equal(product.missingReference, undefined);
   }
   for (const [id, path] of Object.entries(expected))
@@ -450,12 +440,11 @@ test("every priced system has a deployed visualizer reference", async () => {
     ]);
 });
 
-test("Wintent is complete across catalog, visualization, pricing, gallery and video", async () => {
+test("Wintent is complete across catalog, visualization, gallery and video", async () => {
   const fs = await import("node:fs/promises"),
-    [{ products }, { pricedSystems }, page, layout, visualizer, route] =
+    [{ products }, page, layout, visualizer, route] =
       await Promise.all([
         vite.ssrLoadModule("/lib/products.ts"),
-        vite.ssrLoadModule("/app/pricing.ts"),
         fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
         fs.readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
         fs.readFile(
@@ -467,14 +456,10 @@ test("Wintent is complete across catalog, visualization, pricing, gallery and vi
           "utf8",
         ),
       ]);
-  const product = products.find((item) => item.id === "wintent"),
-    pricing = pricedSystems.find((item) => item.id === "wintent");
+  const product = products.find((item) => item.id === "wintent");
   assert.equal(product.label, "Wintent Window Awning");
   assert.deepEqual(product.dimensions, ["width", "projection"]);
   assert.deepEqual(product.referenceImages, ["/projects/elevated-wintent.png"]);
-  assert.equal(pricing.customConsultationRequired, true);
-  assert.equal(pricing.included, "Custom consultation required.");
-  assert.deepEqual(pricing.prices, []);
   assert.match(page, /elevated-wintent\.png/);
   assert.match(page, /nest-wintent-showcase\.mp4/);
   assert.match(page, /aria-label="Wintent Window Awning in operation"/);
@@ -482,6 +467,22 @@ test("Wintent is complete across catalog, visualization, pricing, gallery and vi
   assert.match(visualizer, /selected\.id === "wintent"/);
   assert.match(route, /fetch\(new URL\(path, request\.url\)\)/);
   assert.doesNotMatch(route, /node:fs|readFile\(/);
+});
+
+test("pricing data and consultation pricing content are removed", async () => {
+  const fs = await import("node:fs/promises");
+  await assert.rejects(fs.access(new URL("../app/pricing.ts", import.meta.url)));
+  const [products, visualizer, page, consultation] = await Promise.all([
+    fs.readFile(new URL("../lib/products.ts", import.meta.url), "utf8"),
+    fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    fs.readFile(new URL("../app/api/consultation/route.ts", import.meta.url), "utf8"),
+  ]);
+  for (const source of [products, visualizer, page, consultation]) {
+    assert.doesNotMatch(source, /pricingNote|pricedSystems|getFactoryPrice/);
+  }
+  assert.doesNotMatch(consultation, /`Pricing:/);
+  assert.match(page, /Discuss My Project/);
 });
 
 test("customer-facing product labels use the approved louvered names", async () => {

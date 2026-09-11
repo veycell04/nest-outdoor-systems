@@ -5,11 +5,11 @@ import { Environment, PerspectiveCamera } from "@react-three/drei";
 import { Download, ImagePlus, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PergolaModel } from "./pergola-viewer";
-import { pricedSystems } from "./pricing";
+import { products } from "../../lib/products";
 
-const visualProducts = pricedSystems.map((item) => ({
+const visualProducts = products.map((item) => ({
   id: item.id,
-  label: item.id === "awning" ? "Full Cassette Awning" : item.label,
+  label: item.label,
   viewer: item.viewer,
 }));
 

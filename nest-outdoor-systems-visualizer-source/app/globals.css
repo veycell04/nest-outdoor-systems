@@ -471,16 +471,16 @@ footer h2 em {
   color: #725f50;
 }
 .section-intro h2,
-.estimate-copy h2 {
+.customize-copy h2 {
   font-size: clamp(3rem, 4.8vw, 5.3rem);
   margin: 0;
 }
 .section-intro h2 em,
-.estimate-copy h2 em {
+.customize-copy h2 em {
   color: var(--copper);
 }
 .section-intro > p:last-child,
-.estimate-copy > p {
+.customize-copy > p {
   line-height: 1.8;
   color: #5c625f;
   max-width: 420px;
@@ -780,17 +780,17 @@ footer h2 em {
   font-size: 0.87rem;
   line-height: 1.65;
 }
-.estimate-section {
+.customize-section {
   display: grid;
   grid-template-columns: 1fr 1.15fr;
   gap: 8vw;
   align-items: start;
 }
-.estimate-copy {
+.customize-copy {
   position: sticky;
   top: 4rem;
 }
-.estimate-copy ul {
+.customize-copy ul {
   list-style: none;
   padding: 0;
   margin-top: 2rem;
@@ -798,17 +798,17 @@ footer h2 em {
   flex-direction: column;
   gap: 0.9rem;
 }
-.estimate-copy li {
+.customize-copy li {
   display: flex;
   align-items: center;
   gap: 0.7rem;
   font-size: 0.9rem;
 }
-.estimate-copy li svg {
+.customize-copy li svg {
   width: 16px;
   color: var(--copper);
 }
-.estimator-card {
+.customizer-card {
   background: white;
   padding: clamp(1.5rem, 4vw, 3.4rem);
   box-shadow: 0 22px 70px #26332e16;
@@ -829,20 +829,20 @@ footer h2 em {
 .form-row.three {
   grid-template-columns: repeat(3, 1fr);
 }
-.estimator-card label,
-.estimator-card legend {
+.customizer-card label,
+.customizer-card legend {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: bold;
 }
-.estimator-card label > span:not(.upload span) {
+.customizer-card label > span:not(.upload span) {
   float: right;
   color: #8c918e;
   font-weight: normal;
 }
-.estimator-card input[type="number"],
-.estimator-card select {
+.customizer-card input[type="number"],
+.customizer-card select {
   display: block;
   width: 100%;
   margin-top: 0.65rem;
@@ -868,7 +868,7 @@ footer h2 em {
   width: 18px;
   pointer-events: none;
 }
-.estimator-card fieldset {
+.customizer-card fieldset {
   border: 0;
   padding: 0;
   margin: 1.8rem 0 0;
@@ -961,7 +961,7 @@ footer h2 em {
   margin-top: 0.25rem;
   font-weight: normal;
 }
-.estimate-result {
+.consultation-result {
   margin-top: 1.8rem;
   background: var(--ink);
   color: white;
@@ -970,25 +970,25 @@ footer h2 em {
   align-items: center;
   justify-content: space-between;
 }
-.estimate-result div {
+.consultation-result div {
   display: flex;
   flex-direction: column;
 }
-.estimate-result small {
+.consultation-result small {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: #ffffff8d;
   font-size: 0.62rem;
 }
-.estimate-result strong {
+.consultation-result strong {
   font: 400 clamp(1.5rem, 3vw, 2.25rem) Georgia;
   margin: 0.45rem 0;
 }
-.estimate-result span {
+.consultation-result span {
   font-size: 0.75rem;
   color: #ffffff98;
 }
-.estimate-result a {
+.consultation-result a {
   width: 46px;
   height: 46px;
   border: 1px solid #ffffff45;
@@ -1202,7 +1202,7 @@ footer h2 {
   .section-intro,
   .projects-head,
   .process,
-  .estimate-section,
+  .customize-section,
   footer {
     grid-template-columns: 1fr;
   }
@@ -1239,7 +1239,7 @@ footer h2 {
   .process {
     gap: 2rem;
   }
-  .estimate-copy {
+  .customize-copy {
     position: static;
   }
   .steps article {

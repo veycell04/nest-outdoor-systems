@@ -470,17 +470,14 @@ footer h2 em {
 .eyebrow.dark {
   color: #725f50;
 }
-.section-intro h2,
-.estimate-copy h2 {
+.section-intro h2 {
   font-size: clamp(3rem, 4.8vw, 5.3rem);
   margin: 0;
 }
-.section-intro h2 em,
-.estimate-copy h2 em {
+.section-intro h2 em {
   color: var(--copper);
 }
-.section-intro > p:last-child,
-.estimate-copy > p {
+.section-intro > p:last-child {
   line-height: 1.8;
   color: #5c625f;
   max-width: 420px;
@@ -780,34 +777,6 @@ footer h2 em {
   font-size: 0.87rem;
   line-height: 1.65;
 }
-.estimate-section {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 8vw;
-  align-items: start;
-}
-.estimate-copy {
-  position: sticky;
-  top: 4rem;
-}
-.estimate-copy ul {
-  list-style: none;
-  padding: 0;
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-.estimate-copy li {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  font-size: 0.9rem;
-}
-.estimate-copy li svg {
-  width: 16px;
-  color: var(--copper);
-}
 .estimator-card {
   background: white;
   padding: clamp(1.5rem, 4vw, 3.4rem);
@@ -960,40 +929,6 @@ footer h2 em {
   color: #888;
   margin-top: 0.25rem;
   font-weight: normal;
-}
-.estimate-result {
-  margin-top: 1.8rem;
-  background: var(--ink);
-  color: white;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.estimate-result div {
-  display: flex;
-  flex-direction: column;
-}
-.estimate-result small {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #ffffff8d;
-  font-size: 0.62rem;
-}
-.estimate-result strong {
-  font: 400 clamp(1.5rem, 3vw, 2.25rem) Georgia;
-  margin: 0.45rem 0;
-}
-.estimate-result span {
-  font-size: 0.75rem;
-  color: #ffffff98;
-}
-.estimate-result a {
-  width: 46px;
-  height: 46px;
-  border: 1px solid #ffffff45;
-  display: grid;
-  place-items: center;
 }
 .disclaimer {
   font-size: 0.7rem !important;
@@ -1202,7 +1137,6 @@ footer h2 {
   .section-intro,
   .projects-head,
   .process,
-  .estimate-section,
   footer {
     grid-template-columns: 1fr;
   }
@@ -1238,9 +1172,6 @@ footer h2 {
   }
   .process {
     gap: 2rem;
-  }
-  .estimate-copy {
-    position: static;
   }
   .steps article {
     grid-template-columns: 35px 45px 1fr;

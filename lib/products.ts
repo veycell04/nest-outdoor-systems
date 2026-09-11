@@ -27,7 +27,6 @@ export type ProductDefinition = {
   finishes: string[];
   options: string[];
   viewer: string;
-  pricingNote?: string;
 };
 
 const pergolaReference = "/projects/elevated-pergola.jpeg";
@@ -141,7 +140,6 @@ export const products: ProductDefinition[] = [
     finishes: ["Anthracite", "Bronze", "White"],
     options: ["Motorized operation", "Wind sensor"],
     viewer: "awning",
-    pricingNote: "Custom consultation required.",
   },
   {
     id: "zip",
@@ -201,7 +199,6 @@ export const products: ProductDefinition[] = [
     finishes: ["Anthracite", "Bronze", "White"],
     options: ["Motorized operation"],
     viewer: "guillotine",
-    pricingNote: "Custom consultation required",
   },
   {
     id: "sliding_glass",

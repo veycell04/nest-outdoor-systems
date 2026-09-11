@@ -52,4 +52,9 @@ test("renders only the approved customer-facing louvered product names", async (
   assert.match(html, /Solidroll/);
   assert.match(html, /elevated-solidroll\.jpg/);
   assert.doesNotMatch(html, /02 · Integrated lighting/i);
+  assert.doesNotMatch(
+    html,
+    /Calculate Price|Get Estimate|Estimated Price|Factory Price|Starting From|Project Budget|Request My Project Budget|Final Pricing|binding quotation/i,
+  );
+  assert.match(html, /Discuss My Project/);
 });

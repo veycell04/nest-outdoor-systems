@@ -511,9 +511,6 @@ export default function Home() {
               ))}
             </select>
           </label>
-          {selectedSystem.pricingNote && (
-            <p className="reference-warning">{selectedSystem.pricingNote}</p>
-          )}
           <label>
             How can we help? <span>optional</span>
             <textarea
@@ -529,7 +526,7 @@ export default function Home() {
             </div>
           )}
           <button className="button light" type="submit" disabled={submitting}>
-            {submitting ? "Sending…" : "Request my project budget"}{" "}
+            {submitting ? "Sending…" : "Discuss My Project"}{" "}
             <ArrowRight size={18} />
           </button>
           <small aria-live="polite">
