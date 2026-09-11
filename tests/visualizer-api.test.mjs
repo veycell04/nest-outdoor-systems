@@ -25,6 +25,21 @@ test("rejects generation cleanly when the server credential is absent",async()=>
   if(old)process.env.OPENAI_API_KEY=old;
 });
 
+test("generation limits default by environment and support a bounded override",async()=>{
+  const {generationLimit}=await vite.ssrLoadModule("/app/api/visualize/route.ts");
+  assert.equal(generationLimit({VERCEL_ENV:"production"}),3);
+  assert.equal(generationLimit({VERCEL_ENV:"preview"}),20);
+  assert.equal(generationLimit({VERCEL_ENV:"development"}),20);
+  assert.equal(generationLimit({VERCEL_ENV:"production",VISUALIZER_GENERATION_LIMIT:"17"}),17);
+  assert.equal(generationLimit({VERCEL_ENV:"preview",VISUALIZER_GENERATION_LIMIT:"0"}),20);
+});
+
+test("rate-limit transfer logs include request ID and current count",async()=>{
+  const {logTransfer}=await vite.ssrLoadModule("/lib/visualizer-storage.ts"),lines=[],original=console.info;console.info=(line)=>lines.push(line);
+  try{logTransfer({requestId:"rate-limit-test",stage:"rate_limited",productId:"awning",generationCount:20,generationLimit:20})}finally{console.info=original}
+  const event=JSON.parse(lines[0]);assert.equal(event.requestId,"rate-limit-test");assert.equal(event.generationCount,20);assert.equal(event.generationLimit,20);
+});
+
 test("does not claim consultation delivery without provider setup",async()=>{
   const old=process.env.RESEND_API_KEY;delete process.env.RESEND_API_KEY;
   const body=new FormData();body.append("name","Test Customer");body.append("email","customer@example.com");body.append("productId","awning");

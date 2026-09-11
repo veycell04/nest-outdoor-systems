@@ -98,6 +98,8 @@ export function logTransfer(details: {
   maskBytes?: number | null;
   responseBytes?: number | null;
   metadataBytes?: number | null;
+  generationCount?: number | null;
+  generationLimit?: number | null;
 }) {
   console.info(
     JSON.stringify({
@@ -110,6 +112,8 @@ export function logTransfer(details: {
       maskBytes: details.maskBytes ?? null,
       responseBytes: details.responseBytes ?? null,
       metadataBytes: details.metadataBytes ?? null,
+      generationCount: details.generationCount ?? null,
+      generationLimit: details.generationLimit ?? null,
     }),
   );
 }

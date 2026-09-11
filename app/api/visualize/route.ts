@@ -71,8 +71,12 @@ function jpegSize(bytes: Uint8Array) {
 }
 const cleanText = (value: unknown, max = 200) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
-const clientKey = (request: Request) =>
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+export function generationLimit(env: NodeJS.ProcessEnv = process.env) {
+  const configured = Number(env.VISUALIZER_GENERATION_LIMIT);
+  if (Number.isInteger(configured) && configured > 0 && configured <= 100)
+    return configured;
+  return env.VERCEL_ENV === "production" ? 3 : 20;
+}
 async function blobBytes(objectId: string) {
   const result = await get(objectId, { access: "private" });
   if (!result || result.statusCode !== 200)
@@ -188,7 +192,8 @@ export async function POST(request: Request) {
       new Error("Product has no verified reference image"),
     );
   const now = Date.now(),
-    key = clientKey(request);
+    key = sessionId,
+    limit = generationLimit();
   for (const [id, entry] of completed)
     if (now - entry.at >= 900000) completed.delete(id);
   while (completed.size > 20)
@@ -203,13 +208,23 @@ export async function POST(request: Request) {
   const recent = (requests.get(key) || []).filter(
     (time) => now - time < 3600000,
   );
-  if (recent.length >= 3)
+  if (recent.length >= limit) {
+    logTransfer({
+      requestId,
+      stage: "rate_limited",
+      productId,
+      generationCount: recent.length,
+      generationLimit: limit,
+    });
     return fail(
       "validation",
       429,
       "Generation limit reached. Please try again later or request a consultation.",
-      new Error("Per-client generation limit reached"),
+      new Error(
+        `Per-session generation limit reached: count=${recent.length} limit=${limit}`,
+      ),
     );
+  }
   let photoMeta, maskMeta;
   try {
     [photoMeta, maskMeta] = await Promise.all([head(photoId), head(maskId)]);
