@@ -9,10 +9,16 @@ import { products } from "../lib/products";
 const systems = products;
 
 const projects = [
+  { image: "/projects/elevated-bioclimatic-double.png", title: "Bioclimatic Pergola — Double Moving", type: "Concept Visualization", system: "bioclimatic_double", concept: true },
+  { image: "/projects/elevated-rolling-roof.png", title: "Bioclimatic Pergola — Rolling Roof", type: "Concept Visualization", system: "rolling_roof", concept: true },
+  { image: "/projects/elevated-tilt-system.png", title: "Bioclimatic Pergola — Tilt System", type: "Concept Visualization", system: "tilt", concept: true },
   { image: "/projects/elevated-pergola.jpeg", title: "Classic PVC Pergola", type: "Retractable Roof", system: "pvc" },
+  { image: "/projects/elevated-flat-pergola.png", title: "Flat Pergola — Premium", type: "Concept Visualization", system: "flat", concept: true },
   { image: "/projects/elevated-glass-veranda.jpeg", title: "Glass Veranda", type: "Glass Roof", system: "glass" },
   { image: "/projects/elevated-guillotine-glass.jpeg", title: "Guillotine Glass", type: "Motorized Glass", system: "guillotine" },
   { image: "/projects/elevated-zip-screen.jpeg", title: "Vertical ZIP Screen", type: "Motorized Screen", system: "zip" },
+  { image: "/projects/elevated-ceiling-zip.png", title: "Ceiling ZIP Screen", type: "Concept Visualization", system: "ceiling_zip", concept: true },
+  { image: "/projects/elevated-sliding-glass.png", title: "Sliding Glass", type: "Concept Visualization", system: "sliding_glass", concept: true },
   { image: "/projects/elevated-cassette-awning.jpeg", title: "Cassette Awning", type: "Retractable Awning", system: "awning" },
   { image: "/projects/elevated-umbrella.jpeg", title: "Square Garden Umbrella", type: "Architectural Shade", system: "umbrella" },
 ];
@@ -123,11 +129,11 @@ export default function Home() {
       <section id="systems" className="projects-section section">
         <div className="projects-head">
           <div><p className="eyebrow dark"><span /> Outdoor living systems</p><h2>See the work.<br/><em>Choose your system.</em></h2></div>
-          <p>Each photograph shows a system we produce. Select a project to open its matching product in the estimator.</p>
+          <p>Explore every system we produce. Images marked “Concept Visualization” are design concepts, not completed customer projects.</p>
         </div>
         <div className="project-gallery">
           {projects.map((project, index) => <button type="button" className={`project-tile tile-${index + 1}`} key={project.image} onClick={() => { setSystem(project.system); document.getElementById("estimate")?.scrollIntoView({ behavior: "smooth" }); }} aria-label={`Plan a ${project.title} project`}>
-            <img src={project.image} alt={`Completed ${project.title} project`} loading={index > 1 ? "lazy" : "eager"}/>
+            <img src={project.image} alt={project.concept ? `Concept visualization of ${project.title}` : `Completed ${project.title} project`} loading={index > 1 ? "lazy" : "eager"}/>
             <span className="project-caption"><span>{project.type}</span><strong>{project.title}</strong><small>0{index + 1}</small></span>
           </button>)}
         </div>

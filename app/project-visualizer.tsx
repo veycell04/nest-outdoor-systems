@@ -325,10 +325,6 @@ export function ProjectVisualizer({
     if (!processed || !photo) return setStatus("Add a project photo first.");
     if (!marks.length)
       return setStatus("Mark the installation area before generating.");
-    if (!selected.referenceImages.length)
-      return setStatus(
-        selected.missingReference || "A verified reference is required.",
-      );
     setGenerating(true);
     setStatus(
       `Securely uploading the normalized photo and mask… Your ${result ? "previous result remains visible" : "photo remains visible"}.`,
@@ -742,12 +738,6 @@ export function ProjectVisualizer({
               ))}
             </select>
           </label>
-          {selected.missingReference && (
-            <p className="reference-warning">
-              {selected.missingReference} AI generation is unavailable;
-              consultation remains available.
-            </p>
-          )}
           <div
             className="finish-options"
             role="group"
@@ -850,9 +840,7 @@ export function ProjectVisualizer({
                 type="button"
                 className="button generate"
                 onClick={generate}
-                disabled={
-                  !photo || !marks.length || !selected.referenceImages.length
-                }
+                disabled={!photo || !marks.length}
               >
                 <Sparkles /> Generate my project
               </button>

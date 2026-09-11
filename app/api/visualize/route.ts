@@ -183,14 +183,6 @@ export async function POST(request: Request) {
       "Choose a valid NEST product.",
       new Error("Unknown product ID"),
     );
-  if (!product.referenceImages.length)
-    return fail(
-      "validation",
-      422,
-      product.missingReference ||
-        "A verified product reference is unavailable.",
-      new Error("Product has no verified reference image"),
-    );
   const now = Date.now(),
     key = sessionId,
     limit = generationLimit();
