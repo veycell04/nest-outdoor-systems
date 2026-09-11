@@ -49,7 +49,7 @@ test("large phone uploads are normalized and measured before generation",async()
 
 test("visualize exchanges private object IDs and never returns base64 image JSON",async()=>{
   const fs=await import("node:fs/promises"),route=await fs.readFile(new URL("../app/api/visualize/route.ts",import.meta.url),"utf8"),client=await fs.readFile(new URL("../app/project-visualizer.tsx",import.meta.url),"utf8");
-  assert.doesNotMatch(route,/request\.formData\(/);assert.match(route,/photoObjectId/);assert.match(route,/readFile\([\s\S]*join\(process\.cwd\(\),\s*"public"/);assert.match(route,/put\(/);assert.match(route,/imageUrl:\s*signedResultUrl/);assert.doesNotMatch(route,/data:image\/jpeg;base64/);assert.match(client,/@vercel\/blob\/client/);
+  assert.doesNotMatch(route,/request\.formData\(/);assert.match(route,/photoObjectId/);assert.match(route,/fetch\(new URL\(path, request\.url\)\)/);assert.match(route,/Buffer\.from\(await reference\.arrayBuffer\(\)\)/);assert.doesNotMatch(route,/node:fs|node:path|readFile\(/);assert.match(route,/put\(/);assert.match(route,/imageUrl:\s*signedResultUrl/);assert.doesNotMatch(route,/data:image\/jpeg;base64/);assert.match(client,/@vercel\/blob\/client/);
 });
 
 test("large generated results are stored before a small JSON response",async()=>{

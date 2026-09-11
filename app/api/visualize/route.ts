@@ -1,6 +1,4 @@
 import { get, head, put } from "@vercel/blob";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { getProduct } from "../../../lib/products";
 import {
   createRequestId,
@@ -340,12 +338,15 @@ export async function POST(request: Request) {
     for (const [index, path] of product.referenceImages.entries()) {
       if (!/^\/projects\/[A-Za-z0-9._-]+$/.test(path))
         throw new Error("Unsafe product reference path");
-      const bytes = await readFile(
-        join(process.cwd(), "public", path.slice(1)),
-      );
+      const reference = await fetch(new URL(path, request.url));
+      if (!reference.ok)
+        throw new Error(`Reference image returned HTTP ${reference.status}`);
+      const bytes = Buffer.from(await reference.arrayBuffer());
       outbound.append(
         "image[]",
-        new Blob([bytes], { type: "image/jpeg" }),
+        new Blob([bytes], {
+          type: reference.headers.get("content-type") || "image/jpeg",
+        }),
         `reference-${index}.jpg`,
       );
     }
