@@ -1,4 +1,5 @@
 import { get, head, put } from "@vercel/blob";
+import { createHash } from "node:crypto";
 import { getProduct } from "../../../lib/products";
 import {
   createRequestId,
@@ -17,7 +18,7 @@ import {
 } from "../../../lib/visualizer-storage";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 100;
 const MAX_DIMENSION = 4096,
   requests = new Map<string, number[]>(),
   completed = new Map<string, { at: number }>();
@@ -197,26 +198,6 @@ export async function POST(request: Request) {
       "This request was already completed. Use the displayed result or start a new generation.",
       new Error("Duplicate completed request ID"),
     );
-  const recent = (requests.get(key) || []).filter(
-    (time) => now - time < 3600000,
-  );
-  if (recent.length >= limit) {
-    logTransfer({
-      requestId,
-      stage: "rate_limited",
-      productId,
-      generationCount: recent.length,
-      generationLimit: limit,
-    });
-    return fail(
-      "validation",
-      429,
-      "Generation limit reached. Please try again later or request a consultation.",
-      new Error(
-        `Per-session generation limit reached: count=${recent.length} limit=${limit}`,
-      ),
-    );
-  }
   let photoMeta, maskMeta;
   try {
     [photoMeta, maskMeta] = await Promise.all([head(photoId), head(maskId)]);
@@ -311,7 +292,7 @@ export async function POST(request: Request) {
       product.finishes.includes(specs.finish)
         ? specs.finish
         : product.finishes[0],
-    options = Array.isArray(specs.options)
+    legacyOptions = Array.isArray(specs.options)
       ? specs.options
           .filter(
             (value): value is string =>
@@ -319,11 +300,84 @@ export async function POST(request: Request) {
           )
           .slice(0, 6)
       : [],
+    structure =
+      specs.structure === "freestanding" ? "freestanding" : "attached",
+    lighting = specs.lighting === true,
+    screens = specs.screens === true,
+    roofOpen = Math.max(0, Math.min(100, Number(specs.roofOpen) || 0)),
+    requestedQuality = specs.quality === "high" ? "high" : "preview",
+    options = [
+      ...legacyOptions,
+      structure === "freestanding" ? "Freestanding" : "Attached",
+      ...(lighting ? ["Integrated lighting"] : []),
+      ...(screens ? ["ZIP screens"] : []),
+      `Roof ${roofOpen}% open`,
+    ],
     measurements =
       typeof specs.measurements === "object" && specs.measurements
         ? specs.measurements
         : {},
-    unit = specs.unit === "m" ? "meters" : "feet and inches";
+    unit = specs.unit === "m" ? "meters" : "feet and inches",
+    owner = photoId.split("/")[1],
+    cacheKey = createHash("sha256")
+      .update(Buffer.from(photoBytes))
+      .update(
+        JSON.stringify({
+          productId,
+          finish,
+          structure,
+          lighting,
+          screens,
+          roofOpen,
+          measurements,
+          unit,
+          requestedQuality,
+        }),
+      )
+      .digest("hex"),
+    cachedPath = `visualizer/${owner}/cache/${cacheKey}/result.jpg`;
+  try {
+    const cached = await head(cachedPath);
+    const payload = {
+      imageUrl: signedResultUrl(cached.pathname),
+      product: { id: product.id, label: product.label },
+      specs: { finish, options, measurements, unit },
+      disclaimer:
+        "Concept visualization — final design, engineering and dimensions require professional verification.",
+      requestId,
+      cached: true,
+    };
+    logTransfer({
+      requestId,
+      stage: "cache_hit",
+      productId,
+      responseBytes: new TextEncoder().encode(JSON.stringify(payload))
+        .byteLength,
+    });
+    return json(payload, 200, requestId);
+  } catch {
+    // A cache miss is expected. Generation continues below.
+  }
+  const recent = (requests.get(key) || []).filter(
+    (time) => now - time < 3600000,
+  );
+  if (recent.length >= limit) {
+    logTransfer({
+      requestId,
+      stage: "rate_limited",
+      productId,
+      generationCount: recent.length,
+      generationLimit: limit,
+    });
+    return fail(
+      "validation",
+      429,
+      "Generation limit reached. Please try again later or request a consultation.",
+      new Error(
+        `Per-session generation limit reached: count=${recent.length} limit=${limit}`,
+      ),
+    );
+  }
   const prompt = [
     `Create a photorealistic after-installation architectural concept using the first image as the customer's home and editing only the transparent masked installation area.`,
     `Install this exact product type: ${product.label}. Verified product description: ${product.details}`,
@@ -371,10 +425,18 @@ export async function POST(request: Request) {
     "mask.png",
   );
   outbound.append("prompt", prompt);
-  outbound.append("quality", process.env.OPENAI_IMAGE_QUALITY || "medium");
+  outbound.append(
+    "quality",
+    requestedQuality === "high"
+      ? process.env.OPENAI_IMAGE_HIGH_QUALITY || "high"
+      : process.env.OPENAI_IMAGE_PREVIEW_QUALITY || "low",
+  );
   outbound.append("size", "auto");
   outbound.append("output_format", "jpeg");
-  outbound.append("output_compression", "82");
+  outbound.append(
+    "output_compression",
+    requestedQuality === "high" ? "92" : "78",
+  );
   outbound.append("n", "1");
   logTransfer({
     requestId,
@@ -391,7 +453,7 @@ export async function POST(request: Request) {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         body: outbound,
-        signal: AbortSignal.any([request.signal, AbortSignal.timeout(55000)]),
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(88000)]),
       }),
       providerRequestId = response.headers.get("x-request-id");
     let result: {
@@ -441,18 +503,13 @@ export async function POST(request: Request) {
         providerRequestId,
       );
     }
-    const owner = photoId.split("/")[1],
-      stored = await put(
-        `visualizer/${owner}/${requestId}/result.jpg`,
-        resultBytes,
-        {
-          access: "private",
-          contentType: "image/jpeg",
-          addRandomSuffix: false,
-          allowOverwrite: true,
-          cacheControlMaxAge: 900,
-        },
-      );
+    const stored = await put(cachedPath, resultBytes, {
+      access: "private",
+      contentType: "image/jpeg",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      cacheControlMaxAge: 900,
+    });
     logTransfer({
       requestId,
       stage: "result_stored",
@@ -464,8 +521,9 @@ export async function POST(request: Request) {
       product: { id: product.id, label: product.label },
       specs: { finish, options, measurements, unit },
       disclaimer:
-        "AI design concept — not to scale. Final design requires site measurement and engineering review.",
+        "Concept visualization — final design, engineering and dimensions require professional verification.",
       requestId,
+      cached: false,
     };
     completed.set(requestId, { at: now });
     logTransfer({

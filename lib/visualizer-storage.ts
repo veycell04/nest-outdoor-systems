@@ -62,9 +62,12 @@ export function uploadPath(
 export function ownsObject(sessionId: string, objectId: string) {
   return (
     objectId.startsWith(`visualizer/${ownerPrefix(sessionId)}/`) &&
-    /^visualizer\/[a-f0-9]{32}\/[A-Za-z0-9_-]{8,100}\/(photo\.(jpe?g|webp)|mask\.png|result\.jpe?g)$/.test(
+    (/^visualizer\/[a-f0-9]{32}\/[A-Za-z0-9_-]{8,100}\/(photo\.(jpe?g|webp)|mask\.png|result\.jpe?g)$/.test(
       objectId,
-    )
+    ) ||
+      /^visualizer\/[a-f0-9]{32}\/cache\/[a-f0-9]{64}\/result\.jpg$/.test(
+        objectId,
+      ))
   );
 }
 
