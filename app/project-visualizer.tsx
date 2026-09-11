@@ -9,6 +9,20 @@ import {
   products,
   type ProductDefinition,
 } from "../lib/products";
+import {
+  addOnIds,
+  addOnLabels,
+  compatibility,
+  isPrimarySystemId,
+  primaryLabels,
+  primarySystemIds,
+  reconcileAddOns,
+  toggleAddOn,
+  usesFabricColor,
+  usesLouverColor,
+  type AddOnId,
+  type PrimarySystemId,
+} from "../lib/visualizer-design";
 import type { PolygonPoint } from "./installation-area-editor";
 
 export type VisualizerHandoff = {
@@ -23,21 +37,67 @@ type Concept = {
   productLabel: string;
   measurements: Measurements;
   unit: "ft";
-  finish: string;
-  structure: "attached" | "freestanding";
+  frameColor: string;
+  addOns: AddOnId[];
   quality: "preview" | "high";
 };
-const colors: Record<string, string> = {
-  Anthracite: "#303332",
-  Bronze: "#6d5a48",
-  White: "#deddd8",
-};
+const frameColors = [
+  ["Anthracite Gray", "#3b4141"], ["Matte Black", "#171918"],
+  ["White", "#eeeeda"], ["Bronze", "#6d5544"], ["Custom Color", "custom"],
+] as const;
+const louverColors = [
+  ["Match Frame", "match"], ["White", "#eeeeda"], ["Light Gray", "#aeb3b0"],
+  ["Anthracite", "#3b4141"], ["Custom Color", "custom"],
+] as const;
+const zipColors = [
+  ["White", "#eeeeda"], ["Sand", "#c9b78d"], ["Light Gray", "#aeb3b0"],
+  ["Charcoal", "#4a4e4d"], ["Black", "#171918"], ["Custom Color", "custom"],
+] as const;
+const fabricColors = [
+  ["White", "#eeeeda"], ["Sand", "#c9b78d"], ["Beige", "#c6ad8b"],
+  ["Light Gray", "#aeb3b0"], ["Charcoal", "#4a4e4d"],
+  ["Black", "#171918"], ["Custom Color", "custom"],
+] as const;
 const disclaimer =
-  "Concept visualization — final design, engineering and dimensions require professional verification.";
+  "Concept visualization only. Final compatibility, engineering, dimensions, finishes and color availability are confirmed during consultation.";
 const InstallationAreaEditor = dynamic(
   () => import("./installation-area-editor"),
   { ssr: false },
 );
+function ColorSwatches({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly (readonly [string, string])[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <fieldset className="color-playground">
+      <legend>{label}</legend>
+      <div className="color-swatches">
+        {options.map(([name, color]) => (
+          <button
+            key={name}
+            type="button"
+            className={value === name ? "active" : ""}
+            aria-pressed={value === name}
+            onClick={() => onChange(name)}
+          >
+            <span
+              className={color === "custom" || color === "match" ? color : ""}
+              style={color.startsWith("#") ? { background: color } : undefined}
+            />
+            {name}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 export function containRect(
   containerWidth: number,
   containerHeight: number,
@@ -131,10 +191,15 @@ export function ProjectVisualizer({
       depth: "",
       height: "",
     }),
-    [finish, setFinish] = useState("Anthracite"),
-    [structure, setStructure] = useState<"attached" | "freestanding">(
-      "attached",
-    );
+    [addOns, setAddOns] = useState<AddOnId[]>([]),
+    [frameColor, setFrameColor] = useState("Anthracite Gray"),
+    [louverColor, setLouverColor] = useState("Match Frame"),
+    [zipFabricColor, setZipFabricColor] = useState("Sand"),
+    [fabricColor, setFabricColor] = useState("Sand"),
+    [customColor, setCustomColor] = useState("#8a735f"),
+    [customColorName, setCustomColorName] = useState(""),
+    [ledTemperature, setLedTemperature] = useState("Warm White"),
+    [ledPlacement, setLedPlacement] = useState("Perimeter LED");
   const [result, setResult] = useState<Concept | null>(null),
     [compare, setCompare] = useState(50),
     [generating, setGenerating] = useState(false),
@@ -147,11 +212,16 @@ export function ProjectVisualizer({
   const abortRef = useRef<AbortController | null>(null),
     timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null),
     stageRef = useRef<HTMLDivElement | null>(null);
+  const primaryId: PrimarySystemId = isPrimarySystemId(selectedProductId)
+    ? selectedProductId
+    : primarySystemIds[0];
   const selected = useMemo(
-    () =>
-      products.find((product) => product.id === selectedProductId) ||
-      products[0],
-    [selectedProductId],
+    () => products.find((product) => product.id === primaryId) || products[0],
+    [primaryId],
+  );
+  const selectedAddOnProducts = useMemo(
+    () => addOns.flatMap((id) => products.filter((product) => product.id === id)),
+    [addOns],
   );
   const secondLabel =
     selected.id === "umbrella"
@@ -330,6 +400,54 @@ export function ProjectVisualizer({
     bitmap.close();
     return URL.createObjectURL(await toJpeg(canvas, 0.9));
   }
+  function clearConcept() {
+    if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
+    setResult(null);
+    setCompare(50);
+  }
+  const displayColor = (value: string) =>
+    value === "Custom Color"
+      ? `Custom Color${customColorName ? ` — ${customColorName}` : ""} (${customColor})`
+      : value;
+  const designSpecs = {
+    addOnIds: addOns,
+    frameColor: displayColor(frameColor),
+    louverColor: usesLouverColor(primaryId) ? displayColor(louverColor) : null,
+    zipFabricColor:
+      addOns.includes("zip") || addOns.includes("ceiling_zip")
+        ? displayColor(zipFabricColor)
+        : null,
+    fabricColor: usesFabricColor(primaryId) ? displayColor(fabricColor) : null,
+    ledTemperature: addOns.includes("led") ? ledTemperature : null,
+    ledPlacement: addOns.includes("led") ? ledPlacement : null,
+  };
+  function choosePrimary(nextId: PrimarySystemId) {
+    clearConcept();
+    setAddOns((current) => reconcileAddOns(nextId, current));
+    onProductChange(nextId);
+  }
+  function chooseAddOn(id: AddOnId) {
+    clearConcept();
+    setAddOns((current) => toggleAddOn(primaryId, current, id));
+  }
+  function changeMeasurement(key: keyof Measurements, value: string) {
+    clearConcept();
+    setMeasurements((current) => ({ ...current, [key]: value }));
+  }
+  function resetDesign() {
+    clearConcept();
+    setAddOns([]);
+    setFrameColor("Anthracite Gray");
+    setLouverColor("Match Frame");
+    setZipFabricColor("Sand");
+    setFabricColor("Sand");
+    setCustomColor("#8a735f");
+    setCustomColorName("");
+    setLedTemperature("Warm White");
+    setLedPlacement("Perimeter LED");
+    setMeasurements({ width: "", depth: "", height: "" });
+    onProductChange(primarySystemIds[0]);
+  }
   function summary(product: ProductDefinition, concept = Boolean(result)) {
     const dims =
       [
@@ -340,12 +458,17 @@ export function ProjectVisualizer({
         .filter(Boolean)
         .join(", ") || "None provided";
     return [
-      `Product: ${product.label}`,
-      `Frame: ${finish}`,
-      `Structure: ${structure}`,
+      `Primary system: ${primaryLabels[primaryId] || product.label}`,
+      `Add-ons: ${addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}`,
+      `Frame color preference: ${designSpecs.frameColor}`,
+      designSpecs.louverColor && `Louver / roof color preference: ${designSpecs.louverColor}`,
+      designSpecs.zipFabricColor && `ZIP screen fabric preference: ${designSpecs.zipFabricColor}`,
+      designSpecs.fabricColor && `Fabric color preference: ${designSpecs.fabricColor}`,
+      designSpecs.ledTemperature && `LED temperature: ${designSpecs.ledTemperature}`,
+      designSpecs.ledPlacement && `LED placement: ${designSpecs.ledPlacement}`,
       `Provided measurements: ${dims}`,
       `AI concept generated: ${concept ? "Yes" : "No"}`,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
   async function generate(highQuality = false) {
     if (!photo) return setStatus("Upload a project-area photo first.");
@@ -378,8 +501,7 @@ export function ProjectVisualizer({
         "specs",
         JSON.stringify({
           measurements,
-          finish,
-          structure,
+          ...designSpecs,
           quality: highQuality ? "high" : "preview",
         }),
       );
@@ -468,8 +590,7 @@ export function ProjectVisualizer({
             productId: selected.id,
             requestId,
             specs: {
-              finish,
-              structure,
+              ...designSpecs,
               measurements,
               placement,
               unit: "ft",
@@ -495,7 +616,10 @@ export function ProjectVisualizer({
       if (
         !isGeneratedResultUrl(
           payload.imageUrl,
-          selected.referenceImages,
+          [
+            ...selected.referenceImages,
+            ...selectedAddOnProducts.flatMap((product) => product.referenceImages),
+          ],
           window.location.href,
         )
       )
@@ -509,8 +633,8 @@ export function ProjectVisualizer({
           productLabel: selected.label,
           measurements: { ...measurements },
           unit: "ft",
-          finish,
-          structure,
+          frameColor: designSpecs.frameColor,
+          addOns: [...addOns],
           quality: highQuality ? "high" : "preview",
         };
       if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
@@ -620,12 +744,12 @@ export function ProjectVisualizer({
       <div className="visualizer-heading">
         <div>
           <p className="eyebrow">
-            <span /> Project visualizer
+            <span /> AI Photo Visualizer
           </p>
           <h2 id="visualizer-title">
-            See your space.
+            Design Your Outdoor System.
             <br />
-            <em>Shape the details.</em>
+            <em>See it in your space.</em>
           </h2>
         </div>
         <p>
@@ -744,8 +868,7 @@ export function ProjectVisualizer({
                   : "Creating your concept…"}
               </strong>
               <span>
-                {uploadProgress < 100 ? `${uploadProgress}% · ` : ""}${elapsed}s
-                elapsed
+                {uploadProgress < 100 ? `${uploadProgress}% · ` : ""}Elapsed: {elapsed} seconds
               </span>
             </div>
           )}
@@ -791,35 +914,66 @@ export function ProjectVisualizer({
           <div className="ai-step">
             <span>02</span>
             <div>
-              <strong>Product</strong>
-              <small>
-                Changing the product updates the configuration but does not
-                generate automatically.
-              </small>
+              <strong>Primary system</strong>
+              <small>Choose one system. Generation starts only when you request it.</small>
             </div>
           </div>
-          <label className="visualizer-field">
-            Choose product
-            <select
-              value={selected.id}
-              onChange={(event) => {
-                abortRef.current?.abort();
-                if (result?.image.startsWith("blob:"))
-                  URL.revokeObjectURL(result.image);
-                setResult(null);
-                setCompare(50);
-                onProductChange(event.target.value);
-              }}
-            >
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="ai-step">
+          <div className="product-card-strip" role="radiogroup" aria-label="Primary system">
+            {primarySystemIds.map((id) => {
+              const product = products.find((item) => item.id === id)!;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={primaryId === id}
+                  className={`design-product-card ${primaryId === id ? "selected" : ""}`}
+                  onClick={() => choosePrimary(id)}
+                >
+                  <img src={product.referenceImages[0]} alt="" />
+                  <span>{primaryLabels[id]}</span>
+                  {primaryId === id && <strong aria-hidden="true">✓</strong>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="ai-step compact">
             <span>03</span>
+            <div>
+              <strong>Compatible add-ons</strong>
+              <small>Select up to three. Unavailable choices explain why.</small>
+            </div>
+          </div>
+          <div className="addon-card-grid" aria-label="Compatible add-ons">
+            {addOnIds.map((id) => {
+              const compatible = compatibility[primaryId].includes(id),
+                active = addOns.includes(id),
+                product = products.find((item) => item.id === id),
+                atLimit = addOns.length >= 3 && !active,
+                reason = !compatible
+                  ? `Not currently offered with ${primaryLabels[primaryId]}.`
+                  : atLimit
+                    ? "Choose no more than three add-ons."
+                    : "";
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`addon-card ${active ? "selected" : ""}`}
+                  aria-pressed={active}
+                  disabled={!compatible || atLimit}
+                  title={reason}
+                  onClick={() => chooseAddOn(id)}
+                >
+                  {product?.referenceImages[0] && <img src={product.referenceImages[0]} alt="" />}
+                  <span>{addOnLabels[id]}</span>
+                  {active && <strong aria-hidden="true">✓</strong>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="ai-step">
+            <span>04</span>
             <div>
               <strong>Optional measurements</strong>
               <small>
@@ -835,12 +989,7 @@ export function ProjectVisualizer({
                 min="0"
                 max="100"
                 value={measurements.width}
-                onChange={(event) =>
-                  setMeasurements((current) => ({
-                    ...current,
-                    width: event.target.value,
-                  }))
-                }
+                onChange={(event) => changeMeasurement("width", event.target.value)}
               />
             </label>
             <label>
@@ -851,12 +1000,7 @@ export function ProjectVisualizer({
                 min="0"
                 max="100"
                 value={measurements.depth}
-                onChange={(event) =>
-                  setMeasurements((current) => ({
-                    ...current,
-                    depth: event.target.value,
-                  }))
-                }
+                onChange={(event) => changeMeasurement("depth", event.target.value)}
               />
             </label>
             <label>
@@ -866,41 +1010,39 @@ export function ProjectVisualizer({
                 min="0"
                 max="100"
                 value={measurements.height}
-                onChange={(event) =>
-                  setMeasurements((current) => ({
-                    ...current,
-                    height: event.target.value,
-                  }))
-                }
+                onChange={(event) => changeMeasurement("height", event.target.value)}
               />
             </label>
           </div>
-          <div className="quick-options">
-            <label>
-              Frame color
-              <select
-                value={finish}
-                onChange={(event) => setFinish(event.target.value)}
-              >
-                {Object.keys(colors).map((name) => (
-                  <option key={name}>{name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Structure
-              <select
-                value={structure}
-                onChange={(event) =>
-                  setStructure(
-                    event.target.value as "attached" | "freestanding",
-                  )
-                }
-              >
-                <option value="attached">Attached</option>
-                <option value="freestanding">Freestanding</option>
-              </select>
-            </label>
+          <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>
+          <ColorSwatches label="Frame Color" options={frameColors} value={frameColor} onChange={(value) => { clearConcept(); setFrameColor(value); }} />
+          {usesLouverColor(primaryId) && <ColorSwatches label="Louver Color" options={louverColors} value={louverColor} onChange={(value) => { clearConcept(); setLouverColor(value); }} />}
+          {(addOns.includes("zip") || addOns.includes("ceiling_zip")) && <ColorSwatches label="ZIP Screen Fabric Color" options={zipColors} value={zipFabricColor} onChange={(value) => { clearConcept(); setZipFabricColor(value); }} />}
+          {usesFabricColor(primaryId) && <ColorSwatches label="Fabric Color" options={fabricColors} value={fabricColor} onChange={(value) => { clearConcept(); setFabricColor(value); }} />}
+          {[frameColor, louverColor, zipFabricColor, fabricColor].includes("Custom Color") && (
+            <div className="custom-color-fields">
+              <label>Custom color<input type="color" value={customColor} onChange={(event) => { clearConcept(); setCustomColor(event.target.value); }} /></label>
+              <label>Optional color name<input value={customColorName} onChange={(event) => { clearConcept(); setCustomColorName(event.target.value); }} placeholder="e.g. RAL preference" /></label>
+            </div>
+          )}
+          {addOns.includes("led") && (
+            <div className="lighting-options">
+              <fieldset><legend>Light temperature</legend>{["Warm White", "Neutral White", "Cool White"].map((value) => <label key={value}><input type="radio" name="led-temperature" checked={ledTemperature === value} onChange={() => { clearConcept(); setLedTemperature(value); }} />{value}</label>)}</fieldset>
+              <fieldset><legend>Lighting placement</legend>{["Perimeter LED", "Louver-integrated LED", "Both"].map((value) => <label key={value}><input type="radio" name="led-placement" checked={ledPlacement === value} onChange={() => { clearConcept(); setLedPlacement(value); }} />{value}</label>)}</fieldset>
+            </div>
+          )}
+          <div className="design-summary">
+            <div><strong>Your Design</strong><button type="button" onClick={resetDesign}>Reset Design</button></div>
+            <dl>
+              <dt>Primary system</dt><dd>{primaryLabels[primaryId]}</dd>
+              <dt>Add-ons</dt><dd>{addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}</dd>
+              <dt>Frame color</dt><dd>{designSpecs.frameColor}</dd>
+              <dt>Louver / roof color</dt><dd>{designSpecs.louverColor || "Not applicable"}</dd>
+              <dt>ZIP fabric color</dt><dd>{designSpecs.zipFabricColor || "Not applicable"}</dd>
+              <dt>Other fabric color</dt><dd>{designSpecs.fabricColor || "Not applicable"}</dd>
+              <dt>LED selection</dt><dd>{designSpecs.ledTemperature ? `${designSpecs.ledTemperature} · ${designSpecs.ledPlacement}` : "None"}</dd>
+              <dt>Dimensions</dt><dd>{[measurements.width && `${measurements.width} ft W`, measurements.depth && `${measurements.depth} ft ${secondLabel}`, measurements.height && `${measurements.height} ft H`].filter(Boolean).join(" · ") || "Not provided"}</dd>
+            </dl>
           </div>
           <div className="visualizer-actions">
             {generating ? (

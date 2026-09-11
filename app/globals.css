@@ -1597,6 +1597,194 @@ button:disabled {
   font-size: 0.7rem;
   cursor: pointer;
 }
+.product-card-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(145px, 42%);
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.8rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.design-product-card,
+.addon-card {
+  position: relative;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.design-product-card {
+  min-height: 138px;
+  scroll-snap-align: start;
+}
+.design-product-card img,
+.addon-card img {
+  width: 100%;
+  height: 84px;
+  display: block;
+  object-fit: cover;
+}
+.design-product-card span,
+.addon-card span {
+  display: block;
+  padding: 0.65rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+.design-product-card strong,
+.addon-card strong {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--copper);
+  color: white;
+}
+.design-product-card.selected,
+.addon-card.selected {
+  border: 2px solid var(--copper);
+  box-shadow: inset 0 0 0 1px white;
+}
+.addon-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.addon-card {
+  min-height: 58px;
+}
+.addon-card img {
+  height: 64px;
+}
+.addon-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.ai-step.compact {
+  margin-top: 0.4rem;
+}
+.color-playground,
+.lighting-options fieldset {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.color-playground legend,
+.lighting-options legend {
+  margin-bottom: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.color-swatches {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.4rem;
+}
+.color-swatches button {
+  flex: 0 0 86px;
+  min-height: 68px;
+  padding: 0.45rem;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+.color-swatches button.active {
+  border: 2px solid var(--copper);
+}
+.color-swatches button > span {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 0.35rem;
+  border: 1px solid #7777;
+  border-radius: 50%;
+}
+.color-swatches .custom {
+  background: conic-gradient(#b47b55, #4d6b79, #e3d7b7, #b47b55);
+}
+.color-swatches .match {
+  background: linear-gradient(135deg, #303332 50%, #eeeeda 50%);
+}
+.custom-color-fields {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.custom-color-fields label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+}
+.custom-color-fields input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.45rem;
+}
+.lighting-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.lighting-options label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.4rem 0;
+  font-size: 0.72rem;
+}
+.design-summary {
+  position: sticky;
+  z-index: 4;
+  bottom: -2.3rem;
+  margin: 1.2rem -0.4rem 0;
+  padding: 1rem;
+  border: 1px solid #cfc7ba;
+  background: #f4f1eaf2;
+  box-shadow: 0 -10px 30px #10171512;
+  backdrop-filter: blur(8px);
+}
+.design-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.design-summary > div > strong {
+  font: 400 1.2rem Georgia;
+}
+.design-summary button {
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: var(--copper);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.design-summary dl {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 0.3rem 0.7rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+.design-summary dt { color: #6b716e; }
+.design-summary dd { margin: 0; font-weight: 600; }
 .generation-overlay {
   position: absolute;
   inset: 0;

@@ -2,6 +2,13 @@ import { get, head, put } from "@vercel/blob";
 import { createHash } from "node:crypto";
 import { getProduct } from "../../../lib/products";
 import {
+  addOnIds,
+  addOnLabels,
+  compatibility,
+  isPrimarySystemId,
+  type AddOnId,
+} from "../../../lib/visualizer-design";
+import {
   createRequestId,
   customerError,
   logFailure,
@@ -184,6 +191,13 @@ export async function POST(request: Request) {
       "Choose a valid NEST product.",
       new Error("Unknown product ID"),
     );
+  if (!isPrimarySystemId(product.id))
+    return fail(
+      "validation",
+      400,
+      "Choose a primary NEST outdoor system.",
+      new Error("An add-on product cannot be used as the primary system"),
+    );
   const requiredReference =
     productId === "solidroll"
       ? "/projects/elevated-solidroll.jpg"
@@ -304,32 +318,31 @@ export async function POST(request: Request) {
       typeof input.specs === "object" && input.specs
         ? (input.specs as Record<string, unknown>)
         : {},
-    finish =
-      typeof specs.finish === "string" &&
-      product.finishes.includes(specs.finish)
-        ? specs.finish
-        : product.finishes[0],
-    legacyOptions = Array.isArray(specs.options)
-      ? specs.options
-          .filter(
-            (value): value is string =>
-              typeof value === "string" && product.options.includes(value),
-          )
-          .slice(0, 6)
+    requestedAddOns = Array.isArray(specs.addOnIds)
+      ? specs.addOnIds.filter(
+          (value): value is AddOnId =>
+            typeof value === "string" && addOnIds.includes(value as AddOnId),
+        )
       : [],
-    structure =
-      specs.structure === "freestanding" ? "freestanding" : "attached",
-    lighting = specs.lighting === true,
-    screens = specs.screens === true,
-    roofOpen = Math.max(0, Math.min(100, Number(specs.roofOpen) || 0)),
+    selectedAddOns = requestedAddOns
+      .filter((id) => compatibility[product.id].includes(id))
+      .slice(0, 3),
+    addOnProducts = selectedAddOns
+      .filter((id) => id !== "led")
+      .map((id) => getProduct(id))
+      .filter((value) => Boolean(value)),
+    frameColor = cleanText(specs.frameColor, 100) || "Not specified",
+    louverColor = cleanText(specs.louverColor, 100) || null,
+    zipFabricColor = cleanText(specs.zipFabricColor, 100) || null,
+    fabricColor = cleanText(specs.fabricColor, 100) || null,
+    ledTemperature = selectedAddOns.includes("led")
+      ? cleanText(specs.ledTemperature, 40) || "Warm White"
+      : null,
+    ledPlacement = selectedAddOns.includes("led")
+      ? cleanText(specs.ledPlacement, 50) || "Perimeter LED"
+      : null,
     requestedQuality = specs.quality === "high" ? "high" : "preview",
-    options = [
-      ...legacyOptions,
-      structure === "freestanding" ? "Freestanding" : "Attached",
-      ...(lighting ? ["Integrated lighting"] : []),
-      ...(screens ? ["ZIP screens"] : []),
-      `Roof ${roofOpen}% open`,
-    ],
+    options = selectedAddOns.map((id) => addOnLabels[id]),
     measurements =
       typeof specs.measurements === "object" && specs.measurements
         ? specs.measurements
@@ -347,11 +360,13 @@ export async function POST(request: Request) {
       .update(
         JSON.stringify({
           productId,
-          finish,
-          structure,
-          lighting,
-          screens,
-          roofOpen,
+          selectedAddOns,
+          frameColor,
+          louverColor,
+          zipFabricColor,
+          fabricColor,
+          ledTemperature,
+          ledPlacement,
           measurements,
           placement,
           unit,
@@ -365,9 +380,9 @@ export async function POST(request: Request) {
     const payload = {
       imageUrl: signedResultUrl(cached.pathname),
       product: { id: product.id, label: product.label },
-      specs: { finish, options, measurements, unit },
+      specs: { frameColor, options, measurements, unit },
       disclaimer:
-        "Concept visualization — final design, engineering and dimensions require professional verification.",
+        "Concept visualization only. Final compatibility, engineering, dimensions, finishes and color availability are confirmed during consultation.",
       requestId,
       cached: true,
     };
@@ -405,18 +420,20 @@ export async function POST(request: Request) {
   }
   const editInstruction =
     "Edit the customer’s uploaded photograph only. Install the selected NEST product realistically within the identified installation area. Preserve the original building, storefront, windows, doors, ground, signage, perspective and surroundings outside the installation area. The catalog product image is reference-only and must never replace the customer photo.";
+  const referenceRoles = [
+    `Image 3: ${product.label} — primary-system appearance reference only.`,
+    ...addOnProducts.map(
+      (addOn, index) =>
+        `Image ${index + 4}: ${addOn!.label} — add-on appearance reference only.`,
+    ),
+  ].join(" ");
   const prompt = [
-    `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. Image 3 and any later images are product appearance references only.`,
+    `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. ${referenceRoles}`,
     editInstruction,
-    product.id === "solidroll"
-      ? "Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening."
-      : `Install the selected product inside the marked area: ${product.label}.`,
-    `Install this exact product type: ${product.label}. Verified product description: ${product.details}`,
-    product.id === "solidroll"
-      ? `Fit the Solidroll realistically within the four-corner storefront opening. Preserve the storefront, brick, windows, sidewalk, signage, camera angle, mounting surfaces, and surroundings. Polygon coordinates: ${JSON.stringify(placement)}.`
-      : `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
-    `Use the product reference only for the product's construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image building, background, ground, landscaping, furniture, sky, or surroundings.`,
-    `Finish: ${finish}. Options: ${options.length ? options.join(", ") : "none selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
+    `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}.`,
+    `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
+    `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
+    `Apply these customer preferences: frame ${frameColor}; louver or roof ${louverColor || "not applicable"}; ZIP fabric ${zipFabricColor || "not applicable"}; other fabric ${fabricColor || "not applicable"}; LED temperature ${ledTemperature || "not selected"}; LED placement ${ledPlacement || "not selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
     `Preserve every pixel outside the placement mask, including the customer's building, windows, doors, ground, landscaping, people, furniture, perspective, camera position, crop, and surroundings. Infer product rotation and perspective from Image 1 and the placement area. Match mounting, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,
   ].join("\n");
   const outbound = new FormData();
@@ -436,7 +453,11 @@ export async function POST(request: Request) {
   );
   const referenceHashes: string[] = [];
   try {
-    for (const [index, path] of product.referenceImages.entries()) {
+    const referencePaths = [
+      ...product.referenceImages,
+      ...addOnProducts.flatMap((addOn) => addOn!.referenceImages),
+    ];
+    for (const [index, path] of referencePaths.entries()) {
       if (!/^\/(?:projects|media)\/[A-Za-z0-9._-]+$/.test(path))
         throw new Error("Unsafe product reference path");
       const reference = await fetch(new URL(path, request.url));
@@ -567,9 +588,9 @@ export async function POST(request: Request) {
     const payload = {
       imageUrl: signedResultUrl(stored.pathname),
       product: { id: product.id, label: product.label },
-      specs: { finish, options, measurements, unit },
+      specs: { frameColor, options, measurements, unit },
       disclaimer:
-        "Concept visualization — final design, engineering and dimensions require professional verification.",
+        "Concept visualization only. Final compatibility, engineering, dimensions, finishes and color availability are confirmed during consultation.",
       requestId,
       cached: false,
     };

@@ -248,7 +248,7 @@ test("restored comparison keeps the customer photo as BEFORE and never renders c
   assert.match(client, />BEFORE</);
   assert.match(client, />AI CONCEPT</);
   assert.match(client, /Provided measurements/);
-  assert.doesNotMatch(client, /<img[^>]+referenceImages/);
+  assert.doesNotMatch(client, /comparison-after[\s\S]{0,180}referenceImages/);
   assert.match(
     route,
     /Edit the customer’s uploaded photograph only\. Install the selected NEST product realistically within the identified installation area\./,
@@ -259,7 +259,7 @@ test("restored comparison keeps the customer photo as BEFORE and never renders c
   );
   assert.match(client, /isGeneratedResultUrl\(/);
   assert.doesNotMatch(client, /setConceptUrl\(product\.referenceImage\)|setResultUrl\(referenceUrl\)/);
-  assert.match(route, /Install a Solidroll motorized vertical glass enclosure inside the marked storefront opening\./);
+  assert.match(route, /Install the primary system first/);
   assert.match(route, /four-corner polygon mask/);
   assert.match(route, /Four-corner installation polygon coordinates/);
   assert.doesNotMatch(route, /input_fidelity/);
@@ -303,6 +303,52 @@ test("Konva polygon selection is client-only, touch adjustable, and exports at p
   assert.match(client, /canvas\.width = photo\.width;[\s\S]{0,80}canvas\.height = photo\.height;/);
   assert.match(route, /photoInfo\.width !== maskInfo\.width[\s\S]{0,80}photoInfo\.height !== maskInfo\.height/);
   assert.match(client, />\s*Reset area\s*</);
+});
+
+test("design compatibility supports multiple add-ons and removes incompatible selections", async () => {
+  const {
+    compatibility,
+    reconcileAddOns,
+    toggleAddOn,
+    usesFabricColor,
+    usesLouverColor,
+  } = await vite.ssrLoadModule("/lib/visualizer-design.ts");
+  assert.deepEqual(compatibility.bioclimatic_double, [
+    "zip", "sliding_glass", "guillotine", "solidroll", "led",
+  ]);
+  let selected = toggleAddOn("bioclimatic_double", [], "zip");
+  selected = toggleAddOn("bioclimatic_double", selected, "solidroll");
+  selected = toggleAddOn("bioclimatic_double", selected, "led");
+  assert.deepEqual(selected, ["zip", "solidroll", "led"]);
+  assert.deepEqual(
+    toggleAddOn("bioclimatic_double", selected, "guillotine"),
+    selected,
+  );
+  assert.deepEqual(reconcileAddOns("wintent", selected), []);
+  assert.equal(usesLouverColor("tilt"), true);
+  assert.equal(usesLouverColor("pvc"), false);
+  assert.equal(usesFabricColor("awning"), true);
+});
+
+test("design playground keeps colors independent and remains mobile and keyboard accessible", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    css = await fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
+  assert.match(client, /\[frameColor, setFrameColor\]/);
+  assert.match(client, /\[louverColor, setLouverColor\]/);
+  assert.match(client, /\[zipFabricColor, setZipFabricColor\]/);
+  assert.match(client, /usesLouverColor\(primaryId\)/);
+  assert.match(client, /addOns\.includes\("zip"\)[\s\S]{0,100}addOns\.includes\("ceiling_zip"\)/);
+  assert.match(client, /role="radiogroup"/);
+  assert.match(client, /role="radio"/);
+  assert.match(client, /aria-checked=/);
+  assert.match(client, /aria-pressed=/);
+  assert.match(client, /title=\{reason\}/);
+  assert.match(css, /\.product-card-strip[\s\S]{0,260}overflow-x:\s*auto/);
+  assert.match(route, /Install the primary system first/);
+  assert.match(route, /addOnProducts\.flatMap/);
+  assert.match(route, /appearance reference only/);
 });
 
 test("server cache keys the optimized photo and synchronized configuration", async () => {
@@ -488,7 +534,8 @@ test("Solidroll selection sends its own product ID and sunburst omits input fide
       fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
       fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8"),
     ]);
-  assert.match(client, /<option key=\{product\.id\} value=\{product\.id\}>/);
+  assert.match(client, /primarySystemIds\.map/);
+  assert.match(client, /choosePrimary\(id\)/);
   assert.match(client, /productId: selected\.id/);
   assert.match(route, /gpt-image-2\.5-sunburst/);
   assert.doesNotMatch(route, /input_fidelity/);
