@@ -48,4 +48,8 @@ test("renders only the approved customer-facing louvered product names", async (
   assert.match(html, /Wintent Window Awning/);
   assert.match(html, /\/projects\/elevated-wintent\.png/);
   assert.match(html, /\/media\/nest-wintent-showcase\.mp4/);
+  assert.match(html, /Guillotine Glass/);
+  assert.match(html, /Solidroll/);
+  assert.match(html, /elevated-solidroll\.jpg/);
+  assert.doesNotMatch(html, /02 · Integrated lighting/i);
 });

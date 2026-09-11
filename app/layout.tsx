@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "NEST Outdoor Systems | Custom Pergolas",
   description:
-    "Visualize custom pergolas, Wintent window awnings, retractable roofs, ZIP screens and glass enclosures for your home.",
+    "Visualize custom pergolas, Wintent window awnings, retractable roofs, ZIP screens, Guillotine Glass and Solidroll systems for your home.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

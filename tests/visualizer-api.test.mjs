@@ -389,6 +389,40 @@ test("Sliding Glass uses its deployed concept visualization reference", async ()
   );
 });
 
+test("Guillotine Glass and Solidroll keep distinct IDs, references and pricing", async () => {
+  const fs = await import("node:fs/promises"),
+    [{ products }, { pricedSystems }, page, layout, route] = await Promise.all([
+      vite.ssrLoadModule("/lib/products.ts"),
+      vite.ssrLoadModule("/app/pricing.ts"),
+      fs.readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+      fs.readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+      fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8"),
+    ]);
+  const guillotine = products.find((item) => item.id === "guillotine"),
+    solidroll = products.find((item) => item.id === "solidroll"),
+    solidrollPricing = pricedSystems.find((item) => item.id === "solidroll");
+
+  assert.equal(guillotine.label, "Guillotine Glass");
+  assert.deepEqual(guillotine.referenceImages, [
+    "/media/elevated-project-showcase-2-poster.jpg",
+  ]);
+  assert.equal(solidroll.label, "Solidroll");
+  assert.deepEqual(solidroll.referenceImages, [
+    "/projects/elevated-solidroll.jpg",
+  ]);
+  assert.equal(solidrollPricing.customConsultationRequired, true);
+  assert.equal(solidrollPricing.included, "Custom consultation required");
+  assert.deepEqual(solidrollPricing.prices, []);
+  assert.match(page, /elevated-solidroll\.jpg/);
+  assert.match(page, /02 · Guillotine Glass/);
+  assert.match(page, /03 · Solidroll/);
+  assert.doesNotMatch(page, /02 · Integrated lighting/i);
+  assert.match(layout, /Guillotine Glass and Solidroll/);
+  assert.match(route, /fetch\(new URL\(path, request\.url\)\)/);
+  assert.match(route, /projects\|media/);
+  assert.doesNotMatch(route, /node:fs|readFile\(/);
+});
+
 test("every priced system has a deployed visualizer reference", async () => {
   const [{ pricedSystems }, { products }] = await Promise.all([
     vite.ssrLoadModule("/app/pricing.ts"),
@@ -402,6 +436,7 @@ test("every priced system has a deployed visualizer reference", async () => {
     ceiling_zip: "/projects/elevated-ceiling-zip.png",
     sliding_glass: "/projects/elevated-sliding-glass.png",
     wintent: "/projects/elevated-wintent.png",
+    solidroll: "/projects/elevated-solidroll.jpg",
   };
   for (const priced of pricedSystems) {
     const product = products.find((item) => item.id === priced.id);

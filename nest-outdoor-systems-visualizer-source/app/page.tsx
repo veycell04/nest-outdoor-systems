@@ -14,6 +14,7 @@ const projects = [
   { image: "/projects/elevated-pergola.jpeg", title: "Classic PVC Pergola", type: "Retractable Roof", system: "pvc" },
   { image: "/projects/elevated-glass-veranda.jpeg", title: "Glass Veranda", type: "Glass Roof", system: "glass" },
   { image: "/projects/elevated-guillotine-glass.jpeg", title: "Guillotine Glass", type: "Motorized Glass", system: "guillotine" },
+  { image: "/projects/elevated-solidroll.jpg", title: "Solidroll", type: "Product Photograph", system: "solidroll" },
   { image: "/projects/elevated-zip-screen.jpeg", title: "Vertical ZIP Screen", type: "Motorized Screen", system: "zip" },
   { image: "/projects/elevated-cassette-awning.jpeg", title: "Cassette Awning", type: "Retractable Awning", system: "awning" },
   { image: "/projects/elevated-umbrella.jpeg", title: "Square Garden Umbrella", type: "Architectural Shade", system: "umbrella" },
@@ -104,18 +105,18 @@ export default function Home() {
             <div className="showcase-video-label"><span>01 · Louvered roof</span><strong>Sun and shade control</strong></div>
           </article>
           <article className="showcase-video-wrap">
-            <video className="showcase-video" muted loop playsInline controls preload="metadata" poster="/media/elevated-project-showcase-2-poster.jpg" aria-label="Completed louvered roof and integrated lighting project">
+            <video className="showcase-video" muted loop playsInline controls preload="metadata" poster="/media/elevated-project-showcase-2-poster.jpg" aria-label="Guillotine Glass product in operation">
               <source src="/media/elevated-project-showcase-2.mp4" type="video/mp4" />
               Your browser does not support embedded video.
             </video>
-            <div className="showcase-video-label"><span>02 · Integrated lighting</span><strong>Comfort after sunset</strong></div>
+            <div className="showcase-video-label"><span>02 · Guillotine Glass</span><strong>Flexible glass enclosure</strong></div>
           </article>
           <article className="showcase-video-wrap">
-            <video className="showcase-video" muted loop playsInline controls preload="metadata" poster="/media/elevated-project-showcase-3-poster.jpg" aria-label="Guillotine glass enclosure in operation">
+            <video className="showcase-video" muted loop playsInline controls preload="metadata" poster="/media/elevated-project-showcase-3-poster.jpg" aria-label="Solidroll product in operation">
               <source src="/media/elevated-project-showcase-3.mp4" type="video/mp4" />
               Your browser does not support embedded video.
             </video>
-            <div className="showcase-video-label"><span>03 · Guillotine glass</span><strong>Open or enclosed</strong></div>
+            <div className="showcase-video-label"><span>03 · Solidroll</span><strong>Open or enclosed</strong></div>
           </article>
         </div>
       </section>

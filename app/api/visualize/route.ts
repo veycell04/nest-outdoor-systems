@@ -405,7 +405,7 @@ export async function POST(request: Request) {
   const referenceHashes: string[] = [];
   try {
     for (const [index, path] of product.referenceImages.entries()) {
-      if (!/^\/projects\/[A-Za-z0-9._-]+$/.test(path))
+      if (!/^\/(?:projects|media)\/[A-Za-z0-9._-]+$/.test(path))
         throw new Error("Unsafe product reference path");
       const reference = await fetch(new URL(path, request.url));
       if (!reference.ok)

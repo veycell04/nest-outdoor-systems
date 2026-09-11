@@ -10,6 +10,7 @@ export type ProductId =
   | "ceiling_zip"
   | "glass"
   | "guillotine"
+  | "solidroll"
   | "sliding_glass"
   | "umbrella";
 
@@ -184,11 +185,23 @@ export const products: ProductDefinition[] = [
     family: "glass",
     details:
       "Motorized vertically moving glass enclosure system with framed panels.",
-    referenceImages: ["/projects/elevated-guillotine-glass.jpeg"],
+    referenceImages: ["/media/elevated-project-showcase-2-poster.jpg"],
     dimensions: ["width", "height"],
     finishes: ["Anthracite", "Bronze", "White"],
     options: ["Motorized operation", "Insulated glass", "Clear glass"],
     viewer: "guillotine",
+  },
+  {
+    id: "solidroll",
+    label: "Solidroll",
+    family: "glass",
+    details: "Motorized vertical enclosure system for adaptable outdoor spaces.",
+    referenceImages: ["/projects/elevated-solidroll.jpg"],
+    dimensions: ["width", "height"],
+    finishes: ["Anthracite", "Bronze", "White"],
+    options: ["Motorized operation"],
+    viewer: "guillotine",
+    pricingNote: "Custom consultation required",
   },
   {
     id: "sliding_glass",

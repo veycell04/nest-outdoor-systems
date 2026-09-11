@@ -58,6 +58,12 @@ const projects = [
     system: "guillotine",
   },
   {
+    image: "/projects/elevated-solidroll.jpg",
+    title: "Solidroll",
+    type: "Product Photograph",
+    system: "solidroll",
+  },
+  {
     image: "/projects/elevated-zip-screen.jpeg",
     title: "Vertical ZIP Screen",
     type: "Motorized Screen",
@@ -293,7 +299,7 @@ export default function Home() {
               controls
               preload="metadata"
               poster="/media/elevated-project-showcase-2-poster.jpg"
-              aria-label="Completed louvered roof and integrated lighting project"
+              aria-label="Guillotine Glass product in operation"
             >
               <source
                 src="/media/elevated-project-showcase-2.mp4"
@@ -302,8 +308,8 @@ export default function Home() {
               Your browser does not support embedded video.
             </video>
             <div className="showcase-video-label">
-              <span>02 · Integrated lighting</span>
-              <strong>Comfort after sunset</strong>
+              <span>02 · Guillotine Glass</span>
+              <strong>Flexible glass enclosure</strong>
             </div>
           </article>
           <article className="showcase-video-wrap">
@@ -315,7 +321,7 @@ export default function Home() {
               controls
               preload="metadata"
               poster="/media/elevated-project-showcase-3-poster.jpg"
-              aria-label="Guillotine glass enclosure in operation"
+              aria-label="Solidroll product in operation"
             >
               <source
                 src="/media/elevated-project-showcase-3.mp4"
@@ -324,7 +330,7 @@ export default function Home() {
               Your browser does not support embedded video.
             </video>
             <div className="showcase-video-label">
-              <span>03 · Guillotine glass</span>
+              <span>03 · Solidroll</span>
               <strong>Open or enclosed</strong>
             </div>
           </article>
