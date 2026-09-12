@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { AnalyticsClickTracker } from "../components/analytics-click-tracker";
 import { ClientErrorBoundary } from "../components/client-error-boundary";
+import { GA_MEASUREMENT_ID } from "../lib/analytics";
 import "./globals.css";
 
 const siteUrl = "https://www.nestpergola.com";
@@ -52,6 +54,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-US">
+      <head>
+        <script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config','${GA_MEASUREMENT_ID}',{'anonymize_ip':true});`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"
@@ -71,6 +84,7 @@ export default function RootLayout({
             }),
           }}
         />
+        <AnalyticsClickTracker />
         <ClientErrorBoundary>{children}</ClientErrorBoundary>
       </body>
     </html>

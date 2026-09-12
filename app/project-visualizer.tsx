@@ -9,6 +9,7 @@ import {
   products,
   type ProductDefinition,
 } from "../lib/products";
+import { trackEvent } from "../lib/analytics";
 import {
   addOnIds,
   addOnLabels,
@@ -475,6 +476,11 @@ export function ProjectVisualizer({
     if (placement.length !== 4)
       return setStatus("Select all four installation-area corners first.");
     if (generating) return;
+    trackEvent("visualizer_generate_start", {
+      product_id: selected.id,
+      quality: highQuality ? "high" : "preview",
+      add_on_count: addOns.length,
+    });
     setElapsed(0);
     setGenerating(true);
     setUploadProgress(0);
@@ -640,6 +646,12 @@ export function ProjectVisualizer({
       if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
       setResult(concept);
       setCompare(50);
+      trackEvent("visualizer_generate_complete", {
+        product_id: selected.id,
+        quality: highQuality ? "high" : "preview",
+        add_on_count: addOns.length,
+        cached_result: Boolean(payload.cached),
+      });
       setStatus(
         `${disclaimer}${payload.cached ? " Previous matching result reused." : ""}`,
       );

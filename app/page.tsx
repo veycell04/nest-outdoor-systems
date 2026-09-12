@@ -6,6 +6,7 @@ import {
   ProjectVisualizer,
   type VisualizerHandoff,
 } from "./project-visualizer";
+import { trackEvent } from "../lib/analytics";
 import { products } from "../lib/products";
 
 const systems = products;
@@ -147,6 +148,11 @@ export default function Home() {
       setContactStatus(
         "Your inquiry was accepted. Our design team will follow up by email.",
       );
+      trackEvent("generate_lead", {
+        method: "consultation_form",
+        product_id: system,
+        visualizer_attached: Boolean(projectContext),
+      });
       form.reset();
       setProjectContext("");
       sessionStorage.removeItem("nest-consultation");
