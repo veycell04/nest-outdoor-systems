@@ -183,6 +183,9 @@ export default function Home() {
           <a href="#process" onClick={() => setMenu(false)}>
             Process
           </a>
+          <a href="#locations" onClick={() => setMenu(false)}>
+            Locations
+          </a>
           <a href="#contact" onClick={() => setMenu(false)}>
             Project consultation
           </a>
@@ -454,6 +457,31 @@ export default function Home() {
         </aside>
       </section>
 
+      <section id="locations" className="home-locations section">
+        <div>
+          <p className="eyebrow dark">
+            <span /> Local project teams
+          </p>
+          <h2>
+            Serving Chicago
+            <br />
+            <em>and Nashville.</em>
+          </h2>
+        </div>
+        <div className="home-location-grid">
+          <a href="/locations/chicago-il">
+            <span>Illinois</span>
+            <strong>Chicago &amp; surrounding suburbs</strong>
+            <small>Explore Chicago services →</small>
+          </a>
+          <a href="/locations/nashville-tn">
+            <span>Tennessee</span>
+            <strong>Nashville &amp; surrounding communities</strong>
+            <small>Explore Nashville services →</small>
+          </a>
+        </div>
+      </section>
+
       <footer id="contact">
         <div className="contact-intro">
           <p className="eyebrow">
@@ -546,7 +574,8 @@ export default function Home() {
             />
           </a>
           <p>
-            Serving residential and commercial projects across the United States
+            Serving residential and commercial projects across Chicagoland and
+            Greater Nashville
           </p>
           <p>© 2026 NEST Outdoor Systems</p>
         </div>
