@@ -180,6 +180,12 @@ export function drawContain(
   context.drawImage(image, bounds.x, bounds.y, bounds.width, bounds.height);
   return bounds;
 }
+export function isPlacementReady(points: readonly PolygonPoint[]) {
+  return points.length === 4 && points.every(
+    (point) => Number.isFinite(point.x) && Number.isFinite(point.y) &&
+      point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1,
+  );
+}
 const toJpeg = (canvas: HTMLCanvasElement, quality = 0.82) =>
   new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
@@ -262,9 +268,10 @@ export function ProjectVisualizer({
     colorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null),
     colorSequenceRef = useRef(0),
     generatingRef = useRef(false),
+    colorUpdateActiveRef = useRef(false),
+    activeRequestRef = useRef<string | null>(null),
     generateRef = useRef<(highQuality?: boolean, colorUpdate?: ColorUpdate) => Promise<void>>(async () => {}),
     stageRef = useRef<HTMLDivElement | null>(null);
-  generatingRef.current = generating;
   const primaryId: PrimarySystemId = isPrimarySystemId(selectedProductId)
     ? selectedProductId
     : primarySystemIds[0];
@@ -515,6 +522,38 @@ export function ProjectVisualizer({
     };
     colorTimerRef.current = setTimeout(run, 650);
   }
+  const placementReady = isPlacementReady(placement);
+  function cancelPendingColorUpdate() {
+    colorSequenceRef.current += 1;
+    if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
+    colorTimerRef.current = null;
+    if (!colorUpdateActiveRef.current) return;
+    abortRef.current?.abort();
+    colorUpdateActiveRef.current = false;
+    activeRequestRef.current = null;
+    generatingRef.current = false;
+    setGenerating(false);
+    setUpdatingColors(false);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    abortRef.current = null;
+  }
+  function startManualGeneration(highQuality = false) {
+    if (!photo) {
+      setStatus("Photo missing. Upload a valid project-area photo first.");
+      return;
+    }
+    if (!placementReady) {
+      setStatus("Installation area incomplete. Select exactly four valid corner points.");
+      return;
+    }
+    cancelPendingColorUpdate();
+    if (generatingRef.current) {
+      setStatus("Another request active. Cancel it before starting a new concept.");
+      return;
+    }
+    void generateRef.current(highQuality);
+  }
   function choosePrimary(nextId: PrimarySystemId) {
     clearConcept();
     setAddOns((current) => reconcileAddOns(nextId, current));
@@ -576,10 +615,22 @@ export function ProjectVisualizer({
     ].filter(Boolean).join("\n");
   }
   async function generate(highQuality = false, colorUpdate?: ColorUpdate) {
-    if (!photo) return setStatus("Upload a project-area photo first.");
-    if (placement.length !== 4)
-      return setStatus("Select all four installation-area corners first.");
-    if (generatingRef.current) return;
+    if (!photo) {
+      setStatus("Photo missing. Upload a valid project-area photo first.");
+      return;
+    }
+    if (!placementReady) {
+      setStatus("Installation area incomplete. Select exactly four valid corner points.");
+      return;
+    }
+    if (generatingRef.current) {
+      setStatus("Another request active. Cancel it before starting a new concept.");
+      return;
+    }
+    const requestId = crypto.randomUUID();
+    activeRequestRef.current = requestId;
+    generatingRef.current = true;
+    colorUpdateActiveRef.current = Boolean(colorUpdate);
     trackEvent("visualizer_generate_start", {
       product_id: selected.id,
       quality: highQuality ? "high" : "preview",
@@ -598,8 +649,8 @@ export function ProjectVisualizer({
     );
     const controller = new AbortController();
     abortRef.current = controller;
-    const requestId = crypto.randomUUID();
     let timedOut = false;
+    let requestStage: "preparing" | "session" | "upload" | "api" = "preparing";
     timeoutRef.current = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -645,6 +696,7 @@ export function ProjectVisualizer({
         throw new Error(
           "This photo is too large to process. Please choose another photo.",
         );
+      requestStage = "session";
       const sessionResponse = await fetch("/api/visualize/session", {
           method: "POST",
           signal: controller.signal,
@@ -661,6 +713,7 @@ export function ProjectVisualizer({
         handleUploadUrl: "/api/visualize/upload",
         abortSignal: controller.signal,
       };
+      requestStage = "upload";
       const [photoUpload, maskUpload] = await Promise.all([
         upload(
           `${session.uploadPrefix}/${requestId}/photo.jpg`,
@@ -701,6 +754,7 @@ export function ProjectVisualizer({
           ? "Creating your higher-quality concept…"
           : "Creating your concept…",
       );
+      requestStage = "api";
       const response = await fetch("/api/visualize", {
           method: "POST",
           headers: {
@@ -785,13 +839,19 @@ export function ProjectVisualizer({
       });
     } catch (error) {
       const superseded = Boolean(colorUpdate && colorUpdate.sequence !== colorSequenceRef.current);
-      const message = timedOut
+      const rawMessage = error instanceof Error ? error.message : "Generation failed.",
+        stageMessage = requestStage === "session"
+          ? `Upload session failure. ${rawMessage}`
+          : requestStage === "upload"
+            ? `Photo upload failure. ${rawMessage}`
+            : requestStage === "api"
+              ? `API failure. ${rawMessage}`
+              : rawMessage,
+        message = timedOut
         ? `Generation timed out after 90 seconds. Reference: ${requestId}`
         : controller.signal.aborted
           ? `Generation cancelled. Reference: ${requestId}`
-          : error instanceof Error
-            ? error.message
-            : `Generation failed. Reference: ${requestId}`;
+          : stageMessage;
       if (!superseded) {
         setStatus(colorUpdate
           ? `Color update failed. Your previous concept is still available. Retry by selecting the color again. ${message.includes("Reference:") ? message : `Reference: ${requestId}`}`
@@ -799,11 +859,16 @@ export function ProjectVisualizer({
         if (!colorUpdate) setResult(null);
       }
     } finally {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-      abortRef.current = null;
-      setGenerating(false);
-      setUpdatingColors(false);
+      if (activeRequestRef.current === requestId) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+        abortRef.current = null;
+        activeRequestRef.current = null;
+        colorUpdateActiveRef.current = false;
+        generatingRef.current = false;
+        setGenerating(false);
+        setUpdatingColors(false);
+      }
     }
   }
   generateRef.current = generate;
@@ -1197,8 +1262,7 @@ export function ProjectVisualizer({
               <button
                 type="button"
                 className="button generate"
-                onClick={() => generate(false)}
-                disabled={!photo || placement.length !== 4}
+                onClick={() => startManualGeneration(false)}
               >
                 <Sparkles /> Generate My Concept
               </button>
@@ -1207,7 +1271,7 @@ export function ProjectVisualizer({
               <button
                 type="button"
                 className="visualizer-secondary quality"
-                onClick={() => generate(true)}
+                  onClick={() => startManualGeneration(true)}
                 disabled={generating}
               >
                 Create Higher-Quality Version
