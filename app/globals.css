@@ -1749,7 +1749,7 @@ button:disabled {
   font-size: 0.72rem;
 }
 .design-summary {
-  position: sticky;
+  position: static;
   z-index: 4;
   bottom: -2.3rem;
   margin: 1.2rem -0.4rem 0;
@@ -1806,6 +1806,10 @@ button:disabled {
 .generation-overlay span {
   font-size: 0.75rem;
   color: #ffffffb3;
+}
+.visualizer-actions {
+  position: relative;
+  z-index: 7;
 }
 .generation-overlay.color-update {
   inset: auto 0.8rem 0.8rem auto;

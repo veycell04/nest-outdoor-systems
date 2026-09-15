@@ -186,6 +186,37 @@ test("the photo visualizer stays separate from the 3D configurator", async () =>
   assert.doesNotMatch(page, /id="estimate"/);
 });
 
+test("manual concept generation validates readiness and owns its request lock", async () => {
+  const fs = await import("node:fs/promises"),
+    [{ isPlacementReady }, source, css] = await Promise.all([
+      vite.ssrLoadModule("/app/project-visualizer.tsx"),
+      fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+      fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    ]);
+  const ready = [
+    { x: 0.1, y: 0.1 }, { x: 0.9, y: 0.1 },
+    { x: 0.9, y: 0.9 }, { x: 0.1, y: 0.9 },
+  ];
+  assert.equal(isPlacementReady(ready), true);
+  assert.equal(isPlacementReady(ready.slice(0, 3)), false);
+  assert.equal(isPlacementReady([...ready.slice(0, 3), { x: 1.2, y: 0.9 }]), false);
+  assert.match(source, /onClick=\{\(\) => startManualGeneration\(false\)\}/);
+  assert.match(source, /Photo missing\. Upload a valid project-area photo first/);
+  assert.match(source, /Installation area incomplete\. Select exactly four valid corner points/);
+  assert.match(source, /Another request active\. Cancel it before starting a new concept/);
+  assert.match(source, /Upload session failure/);
+  assert.match(source, /Photo upload failure/);
+  assert.match(source, /API failure/);
+  assert.match(source, /cancelPendingColorUpdate\(\);[\s\S]{0,180}generatingRef\.current/);
+  assert.match(source, /activeRequestRef\.current = requestId;[\s\S]{0,80}generatingRef\.current = true/);
+  assert.match(source, /activeRequestRef\.current === requestId[\s\S]{0,420}generatingRef\.current = false/);
+  assert.match(source, /colorUpdateActiveRef\.current[\s\S]{0,180}abortRef\.current\?\.abort\(\)/);
+  assert.doesNotMatch(source, /if \(generatingRef\.current\) return;/);
+  assert.match(css, /\.generation-overlay[\s\S]{0,300}pointer-events:\s*none/);
+  assert.match(css, /\.visualizer-actions\s*\{[\s\S]{0,80}z-index:\s*7/);
+  assert.match(css, /\.design-summary\s*\{[\s\S]{0,180}position:\s*static/);
+});
+
 test("uploaded photos and canvas composition use centered contain geometry", async () => {
   const fs = await import("node:fs/promises"),
     [{ containRect }, source, css, legacy] = await Promise.all([
