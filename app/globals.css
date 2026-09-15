@@ -1807,6 +1807,18 @@ button:disabled {
   font-size: 0.75rem;
   color: #ffffffb3;
 }
+.generation-overlay.color-update {
+  inset: auto 0.8rem 0.8rem auto;
+  width: auto;
+  min-width: 190px;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ffffff38;
+  border-radius: 4px;
+  align-items: flex-start;
+  gap: 0.25rem;
+  background: #101715e8;
+}
+.generation-overlay.color-update svg { display: none; }
 .quick-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1862,6 +1874,58 @@ button:disabled {
   }
   .visualizer-actions {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 430px) {
+  .visualizer-section,
+  .ai-workspace,
+  .ai-panel,
+  .ai-stage { min-width: 0; max-width: 100%; }
+  .visualizer-section { overflow-x: clip; }
+  .ai-workspace { gap: 0; }
+  .ai-stage {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    height: clamp(230px, 72vw, 310px);
+    max-height: none;
+  }
+  .ai-panel { padding: 1rem; }
+  .prepared-photo,
+  .comparison-base,
+  .comparison-concept { object-fit: contain; object-position: center; }
+  .product-card-strip {
+    grid-auto-columns: minmax(132px, 72vw);
+    max-width: 100%;
+  }
+  .addon-card-grid,
+  .measurement-grid,
+  .custom-color-fields,
+  .lighting-options,
+  .quick-options { grid-template-columns: 1fr; }
+  .color-swatches {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  .color-swatches button {
+    flex: 1 1 calc(33.333% - 0.45rem);
+    min-width: 82px;
+    min-height: 52px;
+  }
+  .visualizer-upload,
+  .visualizer-actions button,
+  .custom-color-fields input,
+  .measurement-grid input,
+  .quick-options select,
+  .design-summary button { min-height: 44px; }
+  .design-summary {
+    position: static;
+    margin-inline: 0;
+  }
+  .design-summary dl { grid-template-columns: 1fr; }
+  .generation-overlay.color-update {
+    inset: auto 0.5rem 0.5rem;
+    min-width: 0;
   }
 }
 .error-page {

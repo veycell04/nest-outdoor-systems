@@ -198,6 +198,7 @@ export async function POST(request: Request) {
       "Choose a primary NEST outdoor system.",
       new Error("An add-on product cannot be used as the primary system"),
     );
+  const primaryProductId = product.id;
   const requiredReference =
     productId === "solidroll"
       ? "/projects/elevated-solidroll.jpg"
@@ -325,7 +326,7 @@ export async function POST(request: Request) {
         )
       : [],
     selectedAddOns = requestedAddOns
-      .filter((id) => compatibility[product.id].includes(id))
+      .filter((id) => compatibility[primaryProductId].includes(id))
       .slice(0, 3),
     addOnProducts = selectedAddOns
       .filter((id) => id !== "led")
@@ -340,6 +341,14 @@ export async function POST(request: Request) {
       : null,
     ledPlacement = selectedAddOns.includes("led")
       ? cleanText(specs.ledPlacement, 50) || "Perimeter LED"
+      : null,
+    colorsDiffer = Boolean(
+      louverColor &&
+        frameColor.toLocaleLowerCase() !== louverColor.toLocaleLowerCase(),
+    ),
+    editMode = specs.editMode === "color_update" ? "color_update" : "install",
+    colorTarget = ["frame", "louver", "zip_fabric", "fabric", "frame_and_matching_louvers"].includes(String(specs.colorTarget))
+      ? String(specs.colorTarget)
       : null,
     requestedQuality = specs.quality === "high" ? "high" : "preview",
     options = selectedAddOns.map((id) => addOnLabels[id]),
@@ -371,6 +380,8 @@ export async function POST(request: Request) {
           placement,
           unit,
           requestedQuality,
+          editMode,
+          colorTarget,
         }),
       )
       .digest("hex"),
@@ -380,7 +391,15 @@ export async function POST(request: Request) {
     const payload = {
       imageUrl: signedResultUrl(cached.pathname),
       product: { id: product.id, label: product.label },
-      specs: { frameColor, options, measurements, unit },
+      specs: {
+        frameColor,
+        louverColor,
+        zipFabricColor,
+        fabricColor,
+        options,
+        measurements,
+        unit,
+      },
       disclaimer:
         "Concept visualization only. Final compatibility, engineering, dimensions, finishes and color availability are confirmed during consultation.",
       requestId,
@@ -427,13 +446,35 @@ export async function POST(request: Request) {
         `Image ${index + 4}: ${addOn!.label} — add-on appearance reference only.`,
     ),
   ].join(" ");
+  const colorTargetInstructions: Record<string, string> = {
+    frame: `Recolor only the structural frame zones to ${frameColor}.`,
+    louver: `Recolor only the louver blades or moving roof panels to ${louverColor || frameColor}.`,
+    zip_fabric: `Recolor only the ZIP screen fabric to ${zipFabricColor || "the requested color"}; keep its cassette and guide rails ${frameColor}.`,
+    fabric: `Recolor only the awning, PVC, or other fabric or membrane to ${fabricColor || "the requested color"}.`,
+    frame_and_matching_louvers: `Recolor the structural frame zones and the matching louver blades or moving roof panels to ${frameColor}, keeping their material boundaries distinct.`,
+  };
+  const colorTargetInstruction = colorTargetInstructions[colorTarget || ""];
+  const generationTask = editMode === "color_update"
+    ? [
+        "Image 1 is the existing generated NEST concept and the only edit target.",
+        colorTargetInstruction || "Recolor only the requested product component.",
+        "Recolor only the requested product component. Do not redesign, move, resize, replace, regenerate, or remove the installed system.",
+        "Do not change the customer’s building, background, crop, perspective, lighting, measurements, installation geometry, position, scale, add-ons, or other selected products.",
+      ].join(" ")
+    : editInstruction;
   const prompt = [
     `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. ${referenceRoles}`,
-    editInstruction,
-    `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}.`,
+    generationTask,
+    editMode === "color_update"
+      ? `Keep the installed ${product.label} and these add-ons unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}.`
+      : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}.`,
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
-    `Apply these customer preferences: frame ${frameColor}; louver or roof ${louverColor || "not applicable"}; ZIP fabric ${zipFabricColor || "not applicable"}; other fabric ${fabricColor || "not applicable"}; LED temperature ${ledTemperature || "not selected"}; LED placement ${ledPlacement || "not selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
+    `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Do not spread any component color into another material zone.`,
+    colorsDiffer
+      ? `The frame and louver colors are intentionally different. Preserve a clearly visible two-tone result: structural frame zones must remain ${frameColor}, while louver blades or moving roof panels must remain ${louverColor}. Never let the most recently listed color overwrite both materials.`
+      : `Keep each specified color confined to its defined component zone, even where selected colors match.`,
+    `LED temperature: ${ledTemperature || "not selected"}. LED placement: ${ledPlacement || "not selected"}. Provided measurements (${unit}): ${JSON.stringify(measurements)}.`,
     `Preserve every pixel outside the placement mask, including the customer's building, windows, doors, ground, landscaping, people, furniture, perspective, camera position, crop, and surroundings. Infer product rotation and perspective from Image 1 and the placement area. Match mounting, daylight direction, contact shadows, reflections, and occlusion. Do not add text, labels, dimensions, logos, or watermarks. This is a design concept, not an engineering drawing and not necessarily to scale.`,
   ].join("\n");
   const outbound = new FormData();
@@ -588,7 +629,15 @@ export async function POST(request: Request) {
     const payload = {
       imageUrl: signedResultUrl(stored.pathname),
       product: { id: product.id, label: product.label },
-      specs: { frameColor, options, measurements, unit },
+      specs: {
+        frameColor,
+        louverColor,
+        zipFabricColor,
+        fabricColor,
+        options,
+        measurements,
+        unit,
+      },
       disclaimer:
         "Concept visualization only. Final compatibility, engineering, dimensions, finishes and color availability are confirmed during consultation.",
       requestId,

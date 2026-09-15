@@ -32,6 +32,7 @@ export type VisualizerHandoff = {
   conceptImage?: string;
 };
 type Measurements = { width: string; depth: string; height: string };
+type ColorTarget = "frame" | "louver" | "zip_fabric" | "fabric" | "frame_and_matching_louvers";
 type Concept = {
   image: string;
   productId: string;
@@ -42,6 +43,7 @@ type Concept = {
   addOns: AddOnId[];
   quality: "preview" | "high";
 };
+type ColorUpdate = { target: ColorTarget; source: Concept; sequence: number };
 const frameColors = [
   ["Anthracite Gray", "#3b4141"], ["Matte Black", "#171918"],
   ["White", "#eeeeda"], ["Bronze", "#6d5544"], ["Custom Color", "custom"],
@@ -97,6 +99,41 @@ function ColorSwatches({
         ))}
       </div>
     </fieldset>
+  );
+}
+function CustomColorFields({
+  component,
+  color,
+  name,
+  onColorChange,
+  onNameChange,
+}: {
+  component: string;
+  color: string;
+  name: string;
+  onColorChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+}) {
+  return (
+    <div className="custom-color-fields">
+      <label>
+        {component} custom color
+        <input
+          type="color"
+          aria-label={`${component} custom color`}
+          value={color}
+          onChange={(event) => onColorChange(event.target.value)}
+        />
+      </label>
+      <label>
+        Optional {component.toLowerCase()} color name
+        <input
+          value={name}
+          onChange={(event) => onNameChange(event.target.value)}
+          placeholder="e.g. RAL preference"
+        />
+      </label>
+    </div>
   );
 }
 export function containRect(
@@ -197,8 +234,14 @@ export function ProjectVisualizer({
     [louverColor, setLouverColor] = useState("Match Frame"),
     [zipFabricColor, setZipFabricColor] = useState("Sand"),
     [fabricColor, setFabricColor] = useState("Sand"),
-    [customColor, setCustomColor] = useState("#8a735f"),
-    [customColorName, setCustomColorName] = useState(""),
+    [frameCustomColor, setFrameCustomColor] = useState("#8a735f"),
+    [frameCustomColorName, setFrameCustomColorName] = useState(""),
+    [louverCustomColor, setLouverCustomColor] = useState("#8a735f"),
+    [louverCustomColorName, setLouverCustomColorName] = useState(""),
+    [zipCustomColor, setZipCustomColor] = useState("#8a735f"),
+    [zipCustomColorName, setZipCustomColorName] = useState(""),
+    [fabricCustomColor, setFabricCustomColor] = useState("#8a735f"),
+    [fabricCustomColorName, setFabricCustomColorName] = useState(""),
     [ledTemperature, setLedTemperature] = useState("Warm White"),
     [ledPlacement, setLedPlacement] = useState("Perimeter LED");
   const [result, setResult] = useState<Concept | null>(null),
@@ -207,12 +250,18 @@ export function ProjectVisualizer({
     [status, setStatus] = useState(""),
     [uploadProgress, setUploadProgress] = useState(0),
     [elapsed, setElapsed] = useState(0),
+    [updatingColors, setUpdatingColors] = useState(false),
     [placement, setPlacement] = useState<PolygonPoint[]>([]),
     [displayBounds, setDisplayBounds] =
       useState<ReturnType<typeof containRect>>(null);
   const abortRef = useRef<AbortController | null>(null),
     timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null),
+    colorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null),
+    colorSequenceRef = useRef(0),
+    generatingRef = useRef(false),
+    generateRef = useRef<(highQuality?: boolean, colorUpdate?: ColorUpdate) => Promise<void>>(async () => {}),
     stageRef = useRef<HTMLDivElement | null>(null);
+  generatingRef.current = generating;
   const primaryId: PrimarySystemId = isPrimarySystemId(selectedProductId)
     ? selectedProductId
     : primarySystemIds[0];
@@ -247,6 +296,7 @@ export function ProjectVisualizer({
     () => () => {
       abortRef.current?.abort();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
     },
     [],
   );
@@ -402,26 +452,62 @@ export function ProjectVisualizer({
     return URL.createObjectURL(await toJpeg(canvas, 0.9));
   }
   function clearConcept() {
+    colorSequenceRef.current += 1;
+    if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
+    colorTimerRef.current = null;
+    if (updatingColors) abortRef.current?.abort();
     if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
     setResult(null);
     setCompare(50);
   }
-  const displayColor = (value: string) =>
+  const displayColor = (value: string, customHex: string, customName: string) =>
     value === "Custom Color"
-      ? `Custom Color${customColorName ? ` — ${customColorName}` : ""} (${customColor})`
+      ? `Custom Color${customName ? ` — ${customName}` : ""} (${customHex})`
       : value;
+  const resolvedFrameColor = displayColor(
+    frameColor,
+    frameCustomColor,
+    frameCustomColorName,
+  );
+  const resolvedLouverColor =
+    louverColor === "Match Frame"
+      ? resolvedFrameColor
+      : displayColor(louverColor, louverCustomColor, louverCustomColorName);
   const designSpecs = {
     addOnIds: addOns,
-    frameColor: displayColor(frameColor),
-    louverColor: usesLouverColor(primaryId) ? displayColor(louverColor) : null,
+    frameColor: resolvedFrameColor,
+    louverColor: usesLouverColor(primaryId) ? resolvedLouverColor : null,
+    louverColorMatchesFrame:
+      usesLouverColor(primaryId) && louverColor === "Match Frame",
     zipFabricColor:
       addOns.includes("zip") || addOns.includes("ceiling_zip")
-        ? displayColor(zipFabricColor)
+        ? displayColor(zipFabricColor, zipCustomColor, zipCustomColorName)
         : null,
-    fabricColor: usesFabricColor(primaryId) ? displayColor(fabricColor) : null,
+    fabricColor: usesFabricColor(primaryId)
+      ? displayColor(fabricColor, fabricCustomColor, fabricCustomColorName)
+      : null,
     ledTemperature: addOns.includes("led") ? ledTemperature : null,
     ledPlacement: addOns.includes("led") ? ledPlacement : null,
   };
+  function queueColorUpdate(target: ColorTarget, apply: () => void) {
+    apply();
+    if (!result) return;
+    const sequence = ++colorSequenceRef.current;
+    if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
+    if (updatingColors) abortRef.current?.abort();
+    setStatus("Updating colors…");
+    const source = result;
+    const run = () => {
+      if (sequence !== colorSequenceRef.current) return;
+      if (generatingRef.current) {
+        colorTimerRef.current = setTimeout(run, 100);
+        return;
+      }
+      colorTimerRef.current = null;
+      void generateRef.current(false, { target, source, sequence });
+    };
+    colorTimerRef.current = setTimeout(run, 650);
+  }
   function choosePrimary(nextId: PrimarySystemId) {
     clearConcept();
     setAddOns((current) => reconcileAddOns(nextId, current));
@@ -442,8 +528,14 @@ export function ProjectVisualizer({
     setLouverColor("Match Frame");
     setZipFabricColor("Sand");
     setFabricColor("Sand");
-    setCustomColor("#8a735f");
-    setCustomColorName("");
+    setFrameCustomColor("#8a735f");
+    setFrameCustomColorName("");
+    setLouverCustomColor("#8a735f");
+    setLouverCustomColorName("");
+    setZipCustomColor("#8a735f");
+    setZipCustomColorName("");
+    setFabricCustomColor("#8a735f");
+    setFabricCustomColorName("");
     setLedTemperature("Warm White");
     setLedPlacement("Perimeter LED");
     setMeasurements({ width: "", depth: "", height: "" });
@@ -462,7 +554,8 @@ export function ProjectVisualizer({
       `Primary system: ${primaryLabels[primaryId] || product.label}`,
       `Add-ons: ${addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}`,
       `Frame color preference: ${designSpecs.frameColor}`,
-      designSpecs.louverColor && `Louver / roof color preference: ${designSpecs.louverColor}`,
+      designSpecs.louverColor &&
+        `Louver / roof color preference: ${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}`,
       designSpecs.zipFabricColor && `ZIP screen fabric preference: ${designSpecs.zipFabricColor}`,
       designSpecs.fabricColor && `Fabric color preference: ${designSpecs.fabricColor}`,
       designSpecs.ledTemperature && `LED temperature: ${designSpecs.ledTemperature}`,
@@ -471,11 +564,11 @@ export function ProjectVisualizer({
       `AI concept generated: ${concept ? "Yes" : "No"}`,
     ].filter(Boolean).join("\n");
   }
-  async function generate(highQuality = false) {
+  async function generate(highQuality = false, colorUpdate?: ColorUpdate) {
     if (!photo) return setStatus("Upload a project-area photo first.");
     if (placement.length !== 4)
       return setStatus("Select all four installation-area corners first.");
-    if (generating) return;
+    if (generatingRef.current) return;
     trackEvent("visualizer_generate_start", {
       product_id: selected.id,
       quality: highQuality ? "high" : "preview",
@@ -483,9 +576,12 @@ export function ProjectVisualizer({
     });
     setElapsed(0);
     setGenerating(true);
+    setUpdatingColors(Boolean(colorUpdate));
     setUploadProgress(0);
     setStatus(
-      highQuality
+      colorUpdate
+        ? "Updating colors…"
+        : highQuality
         ? "Creating your higher-quality concept…"
         : "Creating your concept…",
     );
@@ -498,9 +594,16 @@ export function ProjectVisualizer({
       controller.abort();
     }, 90_000);
     try {
-      const mask = await automaticMask(),
+      const editSource = colorUpdate
+          ? await fetch(colorUpdate.source.image).then((response) => {
+              if (!response.ok) throw new Error("The current concept could not be prepared for recoloring.");
+              return response.blob();
+            })
+          : photo.normalized,
+        editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
+        mask = await automaticMask(),
         diagnostic = new FormData();
-      diagnostic.append("photo", photo.normalized, "project.jpg");
+      diagnostic.append("photo", editSource, "project.jpg");
       diagnostic.append("mask", mask, "mask.png");
       diagnostic.append("productId", selected.id);
       diagnostic.append(
@@ -508,6 +611,8 @@ export function ProjectVisualizer({
         JSON.stringify({
           measurements,
           ...designSpecs,
+          editMode: colorUpdate ? "color_update" : "install",
+          colorTarget: colorUpdate?.target || null,
           quality: highQuality ? "high" : "preview",
         }),
       );
@@ -520,7 +625,7 @@ export function ProjectVisualizer({
           requestId,
           productId: selected.id,
           originalPhotoBytes: photo.originalBytes,
-          normalizedPhotoBytes: photo.normalized.size,
+          normalizedPhotoBytes: editSource.size,
           maskBytes: mask.size,
           totalRequestBytes,
         }),
@@ -548,7 +653,7 @@ export function ProjectVisualizer({
       const [photoUpload, maskUpload] = await Promise.all([
         upload(
           `${session.uploadPrefix}/${requestId}/photo.jpg`,
-          photo.normalized,
+          editSource,
           {
             ...common,
             contentType: "image/jpeg",
@@ -579,7 +684,9 @@ export function ProjectVisualizer({
       ]);
       setUploadProgress(100);
       setStatus(
-        highQuality
+        colorUpdate
+          ? "Updating colors…"
+          : highQuality
           ? "Creating your higher-quality concept…"
           : "Creating your concept…",
       );
@@ -592,7 +699,7 @@ export function ProjectVisualizer({
           body: JSON.stringify({
             photoObjectId: photoUpload.pathname,
             maskObjectId: maskUpload.pathname,
-            photoHash: photo.hash,
+            photoHash: editSourceHash,
             productId: selected.id,
             requestId,
             specs: {
@@ -601,6 +708,8 @@ export function ProjectVisualizer({
               placement,
               unit: "ft",
               quality: highQuality ? "high" : "preview",
+              editMode: colorUpdate ? "color_update" : "install",
+              colorTarget: colorUpdate?.target || null,
             },
           }),
           signal: controller.signal,
@@ -643,7 +752,10 @@ export function ProjectVisualizer({
           addOns: [...addOns],
           quality: highQuality ? "high" : "preview",
         };
-      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
+      if (colorUpdate && colorUpdate.sequence !== colorSequenceRef.current) {
+        URL.revokeObjectURL(normalizedConceptUrl);
+        return;
+      }
       setResult(concept);
       setCompare(50);
       trackEvent("visualizer_generate_complete", {
@@ -661,8 +773,7 @@ export function ProjectVisualizer({
         conceptImage: payload.imageUrl,
       });
     } catch (error) {
-      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
-      setResult(null);
+      const superseded = Boolean(colorUpdate && colorUpdate.sequence !== colorSequenceRef.current);
       const message = timedOut
         ? `Generation timed out after 90 seconds. Reference: ${requestId}`
         : controller.signal.aborted
@@ -670,18 +781,21 @@ export function ProjectVisualizer({
           : error instanceof Error
             ? error.message
             : `Generation failed. Reference: ${requestId}`;
-      setStatus(
-        message.includes("Reference:")
-          ? message
-          : `${message} Reference: ${requestId}`,
-      );
+      if (!superseded) {
+        setStatus(colorUpdate
+          ? `Color update failed. Your previous concept is still available. Retry by selecting the color again. ${message.includes("Reference:") ? message : `Reference: ${requestId}`}`
+          : message.includes("Reference:") ? message : `${message} Reference: ${requestId}`);
+        if (!colorUpdate) setResult(null);
+      }
     } finally {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
       abortRef.current = null;
       setGenerating(false);
+      setUpdatingColors(false);
     }
   }
+  generateRef.current = generate;
   async function downloadConcept() {
     if (!result) return;
     try {
@@ -872,10 +986,12 @@ export function ProjectVisualizer({
             </div>
           )}
           {generating && (
-            <div className="generation-overlay">
+            <div className={`generation-overlay${updatingColors ? " color-update" : ""}`} aria-live="polite">
               <Sparkles />
               <strong>
-                {uploadProgress < 100
+                {updatingColors
+                  ? "Updating colors…"
+                  : uploadProgress < 100
                   ? "Uploading optimized photo…"
                   : "Creating your concept…"}
               </strong>
@@ -1027,16 +1143,14 @@ export function ProjectVisualizer({
             </label>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>
-          <ColorSwatches label="Frame Color" options={frameColors} value={frameColor} onChange={(value) => { clearConcept(); setFrameColor(value); }} />
-          {usesLouverColor(primaryId) && <ColorSwatches label="Louver Color" options={louverColors} value={louverColor} onChange={(value) => { clearConcept(); setLouverColor(value); }} />}
-          {(addOns.includes("zip") || addOns.includes("ceiling_zip")) && <ColorSwatches label="ZIP Screen Fabric Color" options={zipColors} value={zipFabricColor} onChange={(value) => { clearConcept(); setZipFabricColor(value); }} />}
-          {usesFabricColor(primaryId) && <ColorSwatches label="Fabric Color" options={fabricColors} value={fabricColor} onChange={(value) => { clearConcept(); setFabricColor(value); }} />}
-          {[frameColor, louverColor, zipFabricColor, fabricColor].includes("Custom Color") && (
-            <div className="custom-color-fields">
-              <label>Custom color<input type="color" value={customColor} onChange={(event) => { clearConcept(); setCustomColor(event.target.value); }} /></label>
-              <label>Optional color name<input value={customColorName} onChange={(event) => { clearConcept(); setCustomColorName(event.target.value); }} placeholder="e.g. RAL preference" /></label>
-            </div>
-          )}
+          <ColorSwatches label="Frame Color" options={frameColors} value={frameColor} onChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameColor(value))} />
+          {frameColor === "Custom Color" && <CustomColorFields component="Frame" color={frameCustomColor} name={frameCustomColorName} onColorChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameCustomColor(value))} onNameChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameCustomColorName(value))} />}
+          {usesLouverColor(primaryId) && <ColorSwatches label="Louver Color" options={louverColors} value={louverColor} onChange={(value) => queueColorUpdate("louver", () => setLouverColor(value))} />}
+          {usesLouverColor(primaryId) && louverColor === "Custom Color" && <CustomColorFields component="Louver" color={louverCustomColor} name={louverCustomColorName} onColorChange={(value) => queueColorUpdate("louver", () => setLouverCustomColor(value))} onNameChange={(value) => queueColorUpdate("louver", () => setLouverCustomColorName(value))} />}
+          {(addOns.includes("zip") || addOns.includes("ceiling_zip")) && <ColorSwatches label="ZIP Screen Fabric Color" options={zipColors} value={zipFabricColor} onChange={(value) => queueColorUpdate("zip_fabric", () => setZipFabricColor(value))} />}
+          {(addOns.includes("zip") || addOns.includes("ceiling_zip")) && zipFabricColor === "Custom Color" && <CustomColorFields component="ZIP fabric" color={zipCustomColor} name={zipCustomColorName} onColorChange={(value) => queueColorUpdate("zip_fabric", () => setZipCustomColor(value))} onNameChange={(value) => queueColorUpdate("zip_fabric", () => setZipCustomColorName(value))} />}
+          {usesFabricColor(primaryId) && <ColorSwatches label="Fabric Color" options={fabricColors} value={fabricColor} onChange={(value) => queueColorUpdate("fabric", () => setFabricColor(value))} />}
+          {usesFabricColor(primaryId) && fabricColor === "Custom Color" && <CustomColorFields component="Fabric" color={fabricCustomColor} name={fabricCustomColorName} onColorChange={(value) => queueColorUpdate("fabric", () => setFabricCustomColor(value))} onNameChange={(value) => queueColorUpdate("fabric", () => setFabricCustomColorName(value))} />}
           {addOns.includes("led") && (
             <div className="lighting-options">
               <fieldset><legend>Light temperature</legend>{["Warm White", "Neutral White", "Cool White"].map((value) => <label key={value}><input type="radio" name="led-temperature" checked={ledTemperature === value} onChange={() => { clearConcept(); setLedTemperature(value); }} />{value}</label>)}</fieldset>
@@ -1049,7 +1163,7 @@ export function ProjectVisualizer({
               <dt>Primary system</dt><dd>{primaryLabels[primaryId]}</dd>
               <dt>Add-ons</dt><dd>{addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}</dd>
               <dt>Frame color</dt><dd>{designSpecs.frameColor}</dd>
-              <dt>Louver / roof color</dt><dd>{designSpecs.louverColor || "Not applicable"}</dd>
+              <dt>Louver / roof color</dt><dd>{designSpecs.louverColor ? `${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}` : "Not applicable"}</dd>
               <dt>ZIP fabric color</dt><dd>{designSpecs.zipFabricColor || "Not applicable"}</dd>
               <dt>Other fabric color</dt><dd>{designSpecs.fabricColor || "Not applicable"}</dd>
               <dt>LED selection</dt><dd>{designSpecs.ledTemperature ? `${designSpecs.ledTemperature} · ${designSpecs.ledPlacement}` : "None"}</dd>

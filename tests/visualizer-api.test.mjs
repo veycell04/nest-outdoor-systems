@@ -338,6 +338,27 @@ test("design playground keeps colors independent and remains mobile and keyboard
   assert.match(client, /\[frameColor, setFrameColor\]/);
   assert.match(client, /\[louverColor, setLouverColor\]/);
   assert.match(client, /\[zipFabricColor, setZipFabricColor\]/);
+  assert.match(client, /\[fabricColor, setFabricColor\]/);
+  assert.match(client, /\[frameCustomColor, setFrameCustomColor\]/);
+  assert.match(client, /\[louverCustomColor, setLouverCustomColor\]/);
+  assert.match(client, /\[zipCustomColor, setZipCustomColor\]/);
+  assert.match(client, /\[fabricCustomColor, setFabricCustomColor\]/);
+  assert.doesNotMatch(client, /\[customColor, setCustomColor\]/);
+  assert.match(
+    client,
+    /louverColor === "Match Frame"[\s\S]{0,100}\? resolvedFrameColor/,
+  );
+  assert.match(client, /frameColor: resolvedFrameColor/);
+  assert.match(client, /louverColor: usesLouverColor\(primaryId\)/);
+  assert.match(client, /zipFabricColor:[\s\S]{0,180}zipCustomColor/);
+  assert.match(client, /fabricColor: usesFabricColor\(primaryId\)[\s\S]{0,140}fabricCustomColor/);
+  assert.doesNotMatch(client, /clearConcept\(\); setFrameCustomColor/);
+  assert.doesNotMatch(client, /clearConcept\(\); setLouverCustomColor/);
+  assert.match(client, /function queueColorUpdate/);
+  assert.match(client, /setTimeout\(run, 650\)/);
+  assert.match(client, /fetch\(colorUpdate\.source\.image\)/);
+  assert.match(client, /Color update failed\. Your previous concept is still available/);
+  assert.match(client, /updatingColors[\s\S]{0,40}\? "Updating colors…"/);
   assert.match(client, /usesLouverColor\(primaryId\)/);
   assert.match(client, /addOns\.includes\("zip"\)[\s\S]{0,100}addOns\.includes\("ceiling_zip"\)/);
   assert.match(client, /role="radiogroup"/);
@@ -349,6 +370,24 @@ test("design playground keeps colors independent and remains mobile and keyboard
   assert.match(route, /Install the primary system first/);
   assert.match(route, /addOnProducts\.flatMap/);
   assert.match(route, /appearance reference only/);
+  assert.match(route, /STRICT COLOR ZONES/);
+  assert.match(route, /posts, columns, perimeter beams, gutters, and structural rails/);
+  assert.match(route, /louver blades or moving roof panels/);
+  assert.match(route, /ZIP cassette and guide rail must use the frame color/);
+  assert.match(route, /awning, PVC, or other fabric color/);
+  assert.match(route, /Preserve a clearly visible two-tone result/);
+  assert.match(route, /Never let the most recently listed color overwrite both materials/);
+  assert.match(route, /editMode === "color_update"/);
+  assert.match(route, /Recolor only the requested product component/);
+  assert.match(route, /Do not redesign, move, resize, replace, regenerate, or remove/);
+  assert.match(route, /frame_and_matching_louvers/);
+  assert.match(client, /Frame color preference:/);
+  assert.match(client, /Louver \/ roof color preference:/);
+  assert.match(client, /context: summary\(selected/);
+  assert.match(css, /@media \(max-width: 430px\)/);
+  assert.match(css, /\.color-swatches[\s\S]{0,80}flex-wrap:\s*wrap/);
+  assert.match(css, /min-height:\s*44px/);
+  assert.match(css, /object-fit:\s*contain/);
 });
 
 test("server cache keys the optimized photo and synchronized configuration", async () => {
