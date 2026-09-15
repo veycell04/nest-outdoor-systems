@@ -104,6 +104,8 @@ export function logTransfer(details: {
   generationCount?: number | null;
   generationLimit?: number | null;
   responseUrl?: string | null;
+  selectedAddOns?: readonly string[];
+  referencePaths?: readonly string[];
 }) {
   console.info(
     JSON.stringify({
@@ -119,6 +121,8 @@ export function logTransfer(details: {
       generationCount: details.generationCount ?? null,
       generationLimit: details.generationLimit ?? null,
       responseUrl: details.responseUrl ?? null,
+      selectedAddOns: details.selectedAddOns ?? [],
+      referencePaths: details.referencePaths ?? [],
     }),
   );
 }

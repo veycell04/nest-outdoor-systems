@@ -29,6 +29,25 @@ export const maxDuration = 100;
 const MAX_DIMENSION = 4096,
   requests = new Map<string, number[]>(),
   completed = new Map<string, { at: number }>();
+const expectedAddOnReferences: Partial<Record<AddOnId, string>> = {
+  zip: "/projects/elevated-zip-screen.jpeg",
+  ceiling_zip: "/projects/elevated-ceiling-zip.png",
+  sliding_glass: "/projects/elevated-sliding-glass.png",
+  guillotine: "/projects/elevated-guillotine-glass.jpeg",
+  solidroll: "/projects/elevated-solidroll.jpg",
+};
+export function generationCacheKey(
+  photoBytes: ArrayBuffer,
+  maskBytes: ArrayBuffer,
+  configuration: Record<string, unknown>,
+) {
+  return createHash("sha256")
+    .update("customer-photo-edit-v5-mandatory-addons")
+    .update(Buffer.from(photoBytes))
+    .update(Buffer.from(maskBytes))
+    .update(JSON.stringify(configuration))
+    .digest("hex");
+}
 const json = (body: unknown, status = 200, requestId?: string) =>
   Response.json(body, {
     status,
@@ -199,23 +218,6 @@ export async function POST(request: Request) {
       new Error("An add-on product cannot be used as the primary system"),
     );
   const primaryProductId = product.id;
-  const requiredReference =
-    productId === "solidroll"
-      ? "/projects/elevated-solidroll.jpg"
-      : productId === "guillotine"
-        ? "/projects/elevated-guillotine-glass.jpeg"
-        : null;
-  if (
-    requiredReference &&
-    (product.referenceImages.length !== 1 ||
-      product.referenceImages[0] !== requiredReference)
-  )
-    return fail(
-      "validation",
-      500,
-      "The selected product reference is not configured correctly.",
-      new Error(`Reference mapping mismatch for ${productId}`),
-    );
   const now = Date.now(),
     key = sessionId,
     limit = generationLimit();
@@ -363,12 +365,7 @@ export async function POST(request: Request) {
         : null,
     unit = specs.unit === "m" ? "meters" : "feet and inches",
     owner = photoId.split("/")[1],
-    cacheKey = createHash("sha256")
-      .update("customer-photo-edit-v4-konva-polygon")
-      .update(Buffer.from(photoBytes))
-      .update(Buffer.from(maskBytes))
-      .update(
-        JSON.stringify({
+    cacheConfiguration = {
           productId,
           selectedAddOns,
           frameColor,
@@ -384,10 +381,34 @@ export async function POST(request: Request) {
           requestedQuality,
           editMode,
           colorTarget,
-        }),
-      )
-      .digest("hex"),
+        },
+    cacheKey = generationCacheKey(photoBytes, maskBytes, cacheConfiguration),
     cachedPath = `visualizer/${owner}/cache/${cacheKey}/result.jpg`;
+  const missingOrInvalidReference = addOnProducts.find((addOn) => {
+    const expected = expectedAddOnReferences[addOn!.id as AddOnId];
+    return !expected || addOn!.referenceImages.length !== 1 || addOn!.referenceImages[0] !== expected;
+  });
+  if (
+    addOnProducts.length !== selectedAddOns.filter((id) => id !== "led").length ||
+    missingOrInvalidReference
+  )
+    return fail(
+      "validation",
+      500,
+      "A selected add-on reference is not configured correctly.",
+      new Error(`Add-on reference mapping mismatch: ${missingOrInvalidReference?.id || "missing catalog product"}`),
+    );
+  const referencePaths = [
+    ...product.referenceImages,
+    ...addOnProducts.flatMap((addOn) => addOn!.referenceImages),
+  ];
+  logTransfer({
+    requestId,
+    stage: "configuration_validated",
+    productId,
+    selectedAddOns,
+    referencePaths,
+  });
   try {
     const cached = await head(cachedPath);
     const payload = {
@@ -399,6 +420,8 @@ export async function POST(request: Request) {
         zipFabricColor,
         fabricColor,
         glassSystemColor,
+        selectedAddOns,
+        referencePaths,
         options,
         measurements,
         unit,
@@ -449,6 +472,14 @@ export async function POST(request: Request) {
         `Image ${index + 4}: ${addOn!.label} — add-on appearance reference only.`,
     ),
   ].join(" ");
+  const mandatoryAddOnInstructions = selectedAddOns.map((id) => ({
+    zip: "MANDATORY VERTICAL ZIP SCREEN INSTALLATION: Install the selected Vertical ZIP Screen visibly within the marked area, with tensioned screen fabric, cassette, and side guides.",
+    ceiling_zip: "MANDATORY CEILING ZIP SCREEN INSTALLATION: Install the selected Ceiling ZIP Screen visibly beneath the roof opening, with its tensioned horizontal fabric and guide system.",
+    sliding_glass: "MANDATORY SLIDING GLASS INSTALLATION: Install the selected transparent sliding glass panels visibly around the relevant open side, with slim frames and stacking tracks.",
+    guillotine: "MANDATORY GUILLOTINE GLASS INSTALLATION: Install the selected motorized vertically moving framed glass panels visibly beneath the perimeter beams around the relevant open side.",
+    solidroll: "MANDATORY SOLIDROLL INSTALLATION: Install a clearly visible Solidroll motorized vertical glass enclosure inside the marked installation area. Place transparent framed glass panels between the pergola posts and directly beneath the perimeter beams. Show the recognizable horizontal moving-panel divisions, slim aluminum side guides, rails and mullions from the Solidroll reference image. Keep the glass transparent with realistic reflections. Solidroll must enclose the relevant open pergola side; it must not be replaced by an ordinary window, railing, ZIP screen, Guillotine Glass or open space. Preserve the primary pergola and add Solidroll to it—the add-on must not replace the pergola.",
+    led: "MANDATORY INTEGRATED LED INSTALLATION: Install the selected integrated LED lighting visibly in the specified structural location and temperature without changing the product geometry.",
+  }[id])).join(" ");
   const colorTargetInstructions: Record<string, string> = {
     frame: `Recolor only the structural frame zones to ${frameColor}.`,
     louver: `Recolor only the louver blades or moving roof panels to ${louverColor || frameColor}.`,
@@ -480,8 +511,8 @@ export async function POST(request: Request) {
     `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. ${referenceRoles}`,
     generationTask,
     editMode === "color_update"
-      ? `Keep the installed ${product.label} and these add-ons unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}.`
-      : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}. ${pvcEnclosureInstructions}`,
+      ? `Keep the installed ${product.label} and every installed add-on unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}. Solidroll and every other installed product must remain clearly visible and must not be removed, replaced, redesigned, moved, or regenerated.`
+      : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these selected add-ons: ${options.length ? options.join(", ") : "none"}. Every selected add-on must be clearly and visibly installed in the final concept. The result is invalid if any selected add-on is missing. ${mandatoryAddOnInstructions} ${pvcEnclosureInstructions}`,
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
     `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
@@ -508,10 +539,6 @@ export async function POST(request: Request) {
   );
   const referenceHashes: string[] = [];
   try {
-    const referencePaths = [
-      ...product.referenceImages,
-      ...addOnProducts.flatMap((addOn) => addOn!.referenceImages),
-    ];
     for (const [index, path] of referencePaths.entries()) {
       if (!/^\/(?:projects|media)\/[A-Za-z0-9._-]+$/.test(path))
         throw new Error("Unsafe product reference path");
@@ -528,6 +555,13 @@ export async function POST(request: Request) {
         `image-${index + 3}-product-reference-only${path.endsWith(".png") ? ".png" : ".jpg"}`,
       );
     }
+    logTransfer({
+      requestId,
+      stage: "references_loaded",
+      productId,
+      selectedAddOns,
+      referencePaths,
+    });
   } catch (error) {
     return fail(
       "image_generation",
@@ -557,6 +591,8 @@ export async function POST(request: Request) {
     photoBytes: photoBytes.byteLength,
     maskBytes: maskBytes.byteLength,
     metadataBytes,
+    selectedAddOns,
+    referencePaths,
   });
   recent.push(now);
   requests.set(key, recent);
@@ -649,6 +685,8 @@ export async function POST(request: Request) {
         zipFabricColor,
         fabricColor,
         glassSystemColor,
+        selectedAddOns,
+        referencePaths,
         options,
         measurements,
         unit,

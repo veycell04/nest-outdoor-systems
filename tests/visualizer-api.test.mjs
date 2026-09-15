@@ -94,6 +94,24 @@ test("rate-limit transfer logs include request ID and current count", async () =
   assert.equal(event.generationLimit, 20);
 });
 
+test("visualizer diagnostics retain add-on IDs and safe catalog paths", async () => {
+  const { logTransfer } = await vite.ssrLoadModule("/lib/visualizer-storage.ts"),
+    lines = [], original = console.info;
+  console.info = (line) => lines.push(line);
+  try {
+    logTransfer({
+      requestId: "addon-log-test",
+      stage: "references_loaded",
+      productId: "pvc",
+      selectedAddOns: ["solidroll"],
+      referencePaths: ["/projects/elevated-pvc-pergola.jpeg", "/projects/elevated-solidroll.jpg"],
+    });
+  } finally { console.info = original; }
+  const event = JSON.parse(lines[0]);
+  assert.deepEqual(event.selectedAddOns, ["solidroll"]);
+  assert.equal(event.referencePaths.at(-1), "/projects/elevated-solidroll.jpg");
+});
+
 test("does not claim consultation delivery without provider setup", async () => {
   const old = process.env.RESEND_API_KEY;
   delete process.env.RESEND_API_KEY;
@@ -352,6 +370,7 @@ test("design compatibility supports multiple add-ons and removes incompatible se
   ]);
   assert.equal(toggleAddOn("pvc", [], "guillotine").includes("guillotine"), true);
   assert.equal(toggleAddOn("pvc", [], "solidroll").includes("solidroll"), true);
+  assert.equal(toggleAddOn("bioclimatic_double", [], "solidroll").includes("solidroll"), true);
   let selected = toggleAddOn("bioclimatic_double", [], "zip");
   selected = toggleAddOn("bioclimatic_double", selected, "solidroll");
   selected = toggleAddOn("bioclimatic_double", selected, "led");
@@ -412,6 +431,14 @@ test("design playground keeps colors independent and remains mobile and keyboard
   assert.match(client, /Glass System Frame Color/);
   assert.match(client, /Glass-system frame color preference:/);
   assert.match(route, /appearance reference only/);
+  assert.match(route, /Every selected add-on must be clearly and visibly installed in the final concept/);
+  assert.match(route, /The result is invalid if any selected add-on is missing/);
+  assert.match(route, /MANDATORY SOLIDROLL INSTALLATION/);
+  assert.match(route, /recognizable horizontal moving-panel divisions/);
+  assert.match(route, /Solidroll and every other installed product must remain clearly visible/);
+  assert.match(route, /stage:\s*"references_loaded"/);
+  assert.match(route, /selectedAddOns,[\s\S]{0,80}referencePaths/);
+  assert.match(route, /specs:\s*\{[\s\S]{0,240}selectedAddOns/);
   assert.match(route, /STRICT COLOR ZONES/);
   assert.match(route, /posts, columns, perimeter beams, gutters, and structural rails/);
   assert.match(route, /louver blades or moving roof panels/);
@@ -433,12 +460,17 @@ test("design playground keeps colors independent and remains mobile and keyboard
 });
 
 test("server cache keys the optimized photo and synchronized configuration", async () => {
-  const source = await import("node:fs/promises").then((fs) =>
-    fs.readFile(
-      new URL("../app/api/visualize/route.ts", import.meta.url),
-      "utf8",
-    ),
-  );
+  const [source, { generationCacheKey }] = await Promise.all([
+    import("node:fs/promises").then((fs) => fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8")),
+    vite.ssrLoadModule("/app/api/visualize/route.ts"),
+  ]);
+  const photo = new Uint8Array([1, 2, 3]).buffer,
+    mask = new Uint8Array([4, 5, 6]).buffer,
+    withoutAddOn = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: [] }),
+    withSolidroll = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: ["solidroll"] });
+  assert.notEqual(withoutAddOn, withSolidroll);
+  assert.match(source, /customer-photo-edit-v5-mandatory-addons/);
+  assert.doesNotMatch(source, /customer-photo-edit-v4-konva-polygon/);
   assert.match(source, /createHash\("sha256"\)/);
   assert.match(source, /Buffer\.from\(photoBytes\)/);
   assert.match(source, /cache\/\$\{cacheKey\}\/result\.jpg/);
@@ -555,9 +587,10 @@ test("Guillotine Glass and Solidroll keep distinct IDs and references", async ()
   ]);
   assert.equal(guillotine.viewer, "guillotine");
   assert.equal(solidroll.viewer, "solidroll");
-  assert.match(route, /productId === "solidroll"/);
-  assert.match(route, /productId === "guillotine"/);
-  assert.match(route, /Reference mapping mismatch/);
+  assert.doesNotMatch(route, /productId === "solidroll"/);
+  assert.match(route, /expectedAddOnReferences/);
+  assert.match(route, /addOnProducts\.find/);
+  assert.match(route, /Add-on reference mapping mismatch/);
   assert.match(page, /elevated-solidroll\.jpg/);
   assert.match(page, /02 · Guillotine Glass/);
   assert.match(page, /03 · Solidroll/);
