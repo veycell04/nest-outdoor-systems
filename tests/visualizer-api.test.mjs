@@ -316,6 +316,11 @@ test("design compatibility supports multiple add-ons and removes incompatible se
   assert.deepEqual(compatibility.bioclimatic_double, [
     "zip", "sliding_glass", "guillotine", "solidroll", "led",
   ]);
+  assert.deepEqual(compatibility.pvc, [
+    "zip", "sliding_glass", "guillotine", "solidroll", "led",
+  ]);
+  assert.equal(toggleAddOn("pvc", [], "guillotine").includes("guillotine"), true);
+  assert.equal(toggleAddOn("pvc", [], "solidroll").includes("solidroll"), true);
   let selected = toggleAddOn("bioclimatic_double", [], "zip");
   selected = toggleAddOn("bioclimatic_double", selected, "solidroll");
   selected = toggleAddOn("bioclimatic_double", selected, "led");
@@ -369,6 +374,12 @@ test("design playground keeps colors independent and remains mobile and keyboard
   assert.match(css, /\.product-card-strip[\s\S]{0,260}overflow-x:\s*auto/);
   assert.match(route, /Install the primary system first/);
   assert.match(route, /addOnProducts\.flatMap/);
+  assert.match(route, /Build the Classic PVC Pergola first, then install Guillotine Glass beneath its roof and around its open sides/);
+  assert.match(route, /Build the Classic PVC Pergola first, then install Solidroll around its open sides beneath the PVC roof/);
+  assert.match(route, /Keep the PVC roof fabric, pergola structural frame, and Solidroll enclosure visually distinct/);
+  assert.match(route, /glass-system frame color/);
+  assert.match(client, /Glass System Frame Color/);
+  assert.match(client, /Glass-system frame color preference:/);
   assert.match(route, /appearance reference only/);
   assert.match(route, /STRICT COLOR ZONES/);
   assert.match(route, /posts, columns, perimeter beams, gutters, and structural rails/);

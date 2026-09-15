@@ -32,7 +32,7 @@ export type VisualizerHandoff = {
   conceptImage?: string;
 };
 type Measurements = { width: string; depth: string; height: string };
-type ColorTarget = "frame" | "louver" | "zip_fabric" | "fabric" | "frame_and_matching_louvers";
+type ColorTarget = "frame" | "louver" | "zip_fabric" | "fabric" | "glass_system" | "frame_and_matching_louvers";
 type Concept = {
   image: string;
   productId: string;
@@ -242,6 +242,9 @@ export function ProjectVisualizer({
     [zipCustomColorName, setZipCustomColorName] = useState(""),
     [fabricCustomColor, setFabricCustomColor] = useState("#8a735f"),
     [fabricCustomColorName, setFabricCustomColorName] = useState(""),
+    [glassSystemColor, setGlassSystemColor] = useState("Anthracite Gray"),
+    [glassCustomColor, setGlassCustomColor] = useState("#3b4141"),
+    [glassCustomColorName, setGlassCustomColorName] = useState(""),
     [ledTemperature, setLedTemperature] = useState("Warm White"),
     [ledPlacement, setLedPlacement] = useState("Perimeter LED");
   const [result, setResult] = useState<Concept | null>(null),
@@ -486,6 +489,10 @@ export function ProjectVisualizer({
     fabricColor: usesFabricColor(primaryId)
       ? displayColor(fabricColor, fabricCustomColor, fabricCustomColorName)
       : null,
+    glassSystemColor:
+      addOns.includes("sliding_glass") || addOns.includes("guillotine") || addOns.includes("solidroll")
+        ? displayColor(glassSystemColor, glassCustomColor, glassCustomColorName)
+        : null,
     ledTemperature: addOns.includes("led") ? ledTemperature : null,
     ledPlacement: addOns.includes("led") ? ledPlacement : null,
   };
@@ -536,6 +543,9 @@ export function ProjectVisualizer({
     setZipCustomColorName("");
     setFabricCustomColor("#8a735f");
     setFabricCustomColorName("");
+    setGlassSystemColor("Anthracite Gray");
+    setGlassCustomColor("#3b4141");
+    setGlassCustomColorName("");
     setLedTemperature("Warm White");
     setLedPlacement("Perimeter LED");
     setMeasurements({ width: "", depth: "", height: "" });
@@ -558,6 +568,7 @@ export function ProjectVisualizer({
         `Louver / roof color preference: ${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}`,
       designSpecs.zipFabricColor && `ZIP screen fabric preference: ${designSpecs.zipFabricColor}`,
       designSpecs.fabricColor && `Fabric color preference: ${designSpecs.fabricColor}`,
+      designSpecs.glassSystemColor && `Glass-system frame color preference: ${designSpecs.glassSystemColor}`,
       designSpecs.ledTemperature && `LED temperature: ${designSpecs.ledTemperature}`,
       designSpecs.ledPlacement && `LED placement: ${designSpecs.ledPlacement}`,
       `Provided measurements: ${dims}`,
@@ -1151,6 +1162,8 @@ export function ProjectVisualizer({
           {(addOns.includes("zip") || addOns.includes("ceiling_zip")) && zipFabricColor === "Custom Color" && <CustomColorFields component="ZIP fabric" color={zipCustomColor} name={zipCustomColorName} onColorChange={(value) => queueColorUpdate("zip_fabric", () => setZipCustomColor(value))} onNameChange={(value) => queueColorUpdate("zip_fabric", () => setZipCustomColorName(value))} />}
           {usesFabricColor(primaryId) && <ColorSwatches label="Fabric Color" options={fabricColors} value={fabricColor} onChange={(value) => queueColorUpdate("fabric", () => setFabricColor(value))} />}
           {usesFabricColor(primaryId) && fabricColor === "Custom Color" && <CustomColorFields component="Fabric" color={fabricCustomColor} name={fabricCustomColorName} onColorChange={(value) => queueColorUpdate("fabric", () => setFabricCustomColor(value))} onNameChange={(value) => queueColorUpdate("fabric", () => setFabricCustomColorName(value))} />}
+          {(addOns.includes("sliding_glass") || addOns.includes("guillotine") || addOns.includes("solidroll")) && <ColorSwatches label="Glass System Frame Color" options={frameColors} value={glassSystemColor} onChange={(value) => queueColorUpdate("glass_system", () => setGlassSystemColor(value))} />}
+          {(addOns.includes("sliding_glass") || addOns.includes("guillotine") || addOns.includes("solidroll")) && glassSystemColor === "Custom Color" && <CustomColorFields component="Glass system frame" color={glassCustomColor} name={glassCustomColorName} onColorChange={(value) => queueColorUpdate("glass_system", () => setGlassCustomColor(value))} onNameChange={(value) => queueColorUpdate("glass_system", () => setGlassCustomColorName(value))} />}
           {addOns.includes("led") && (
             <div className="lighting-options">
               <fieldset><legend>Light temperature</legend>{["Warm White", "Neutral White", "Cool White"].map((value) => <label key={value}><input type="radio" name="led-temperature" checked={ledTemperature === value} onChange={() => { clearConcept(); setLedTemperature(value); }} />{value}</label>)}</fieldset>
@@ -1166,6 +1179,7 @@ export function ProjectVisualizer({
               <dt>Louver / roof color</dt><dd>{designSpecs.louverColor ? `${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}` : "Not applicable"}</dd>
               <dt>ZIP fabric color</dt><dd>{designSpecs.zipFabricColor || "Not applicable"}</dd>
               <dt>Other fabric color</dt><dd>{designSpecs.fabricColor || "Not applicable"}</dd>
+              <dt>Glass-system frame color</dt><dd>{designSpecs.glassSystemColor || "Not applicable"}</dd>
               <dt>LED selection</dt><dd>{designSpecs.ledTemperature ? `${designSpecs.ledTemperature} · ${designSpecs.ledPlacement}` : "None"}</dd>
               <dt>Dimensions</dt><dd>{[measurements.width && `${measurements.width} ft W`, measurements.depth && `${measurements.depth} ft ${secondLabel}`, measurements.height && `${measurements.height} ft H`].filter(Boolean).join(" · ") || "Not provided"}</dd>
             </dl>

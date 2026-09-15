@@ -47,7 +47,7 @@ export const compatibility: Record<PrimarySystemId, readonly AddOnId[]> = {
   bioclimatic_double: ["zip", "sliding_glass", "guillotine", "solidroll", "led"],
   rolling_roof: ["zip", "sliding_glass", "guillotine", "solidroll", "led"],
   tilt: ["zip", "sliding_glass", "guillotine", "solidroll", "led"],
-  pvc: ["zip", "sliding_glass", "led"],
+  pvc: ["zip", "sliding_glass", "guillotine", "solidroll", "led"],
   flat: ["zip", "sliding_glass", "led"],
   glass: ["zip", "sliding_glass", "guillotine", "solidroll", "led"],
   awning: [],

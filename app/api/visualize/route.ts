@@ -336,6 +336,7 @@ export async function POST(request: Request) {
     louverColor = cleanText(specs.louverColor, 100) || null,
     zipFabricColor = cleanText(specs.zipFabricColor, 100) || null,
     fabricColor = cleanText(specs.fabricColor, 100) || null,
+    glassSystemColor = cleanText(specs.glassSystemColor, 100) || null,
     ledTemperature = selectedAddOns.includes("led")
       ? cleanText(specs.ledTemperature, 40) || "Warm White"
       : null,
@@ -347,7 +348,7 @@ export async function POST(request: Request) {
         frameColor.toLocaleLowerCase() !== louverColor.toLocaleLowerCase(),
     ),
     editMode = specs.editMode === "color_update" ? "color_update" : "install",
-    colorTarget = ["frame", "louver", "zip_fabric", "fabric", "frame_and_matching_louvers"].includes(String(specs.colorTarget))
+    colorTarget = ["frame", "louver", "zip_fabric", "fabric", "glass_system", "frame_and_matching_louvers"].includes(String(specs.colorTarget))
       ? String(specs.colorTarget)
       : null,
     requestedQuality = specs.quality === "high" ? "high" : "preview",
@@ -374,6 +375,7 @@ export async function POST(request: Request) {
           louverColor,
           zipFabricColor,
           fabricColor,
+          glassSystemColor,
           ledTemperature,
           ledPlacement,
           measurements,
@@ -396,6 +398,7 @@ export async function POST(request: Request) {
         louverColor,
         zipFabricColor,
         fabricColor,
+        glassSystemColor,
         options,
         measurements,
         unit,
@@ -451,6 +454,7 @@ export async function POST(request: Request) {
     louver: `Recolor only the louver blades or moving roof panels to ${louverColor || frameColor}.`,
     zip_fabric: `Recolor only the ZIP screen fabric to ${zipFabricColor || "the requested color"}; keep its cassette and guide rails ${frameColor}.`,
     fabric: `Recolor only the awning, PVC, or other fabric or membrane to ${fabricColor || "the requested color"}.`,
+    glass_system: `Recolor only the selected glass system's frames, rails, and mullions to ${glassSystemColor || frameColor}; do not tint or recolor the glass panes.`,
     frame_and_matching_louvers: `Recolor the structural frame zones and the matching louver blades or moving roof panels to ${frameColor}, keeping their material boundaries distinct.`,
   };
   const colorTargetInstruction = colorTargetInstructions[colorTarget || ""];
@@ -462,15 +466,25 @@ export async function POST(request: Request) {
         "Do not change the customer’s building, background, crop, perspective, lighting, measurements, installation geometry, position, scale, add-ons, or other selected products.",
       ].join(" ")
     : editInstruction;
+  const pvcEnclosureInstructions = primaryProductId === "pvc"
+    ? [
+        selectedAddOns.includes("guillotine")
+          ? "Build the Classic PVC Pergola first, then install Guillotine Glass beneath its roof and around its open sides, aligned to the pergola structure."
+          : null,
+        selectedAddOns.includes("solidroll")
+          ? "Build the Classic PVC Pergola first, then install Solidroll around its open sides beneath the PVC roof, aligned to the pergola structure. Keep the PVC roof fabric, pergola structural frame, and Solidroll enclosure visually distinct."
+          : null,
+      ].filter(Boolean).join(" ")
+    : "";
   const prompt = [
     `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. ${referenceRoles}`,
     generationTask,
     editMode === "color_update"
       ? `Keep the installed ${product.label} and these add-ons unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}.`
-      : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}.`,
+      : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these compatible add-ons: ${options.length ? options.join(", ") : "none"}. ${pvcEnclosureInstructions}`,
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
-    `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Do not spread any component color into another material zone.`,
+    `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
     colorsDiffer
       ? `The frame and louver colors are intentionally different. Preserve a clearly visible two-tone result: structural frame zones must remain ${frameColor}, while louver blades or moving roof panels must remain ${louverColor}. Never let the most recently listed color overwrite both materials.`
       : `Keep each specified color confined to its defined component zone, even where selected colors match.`,
@@ -634,6 +648,7 @@ export async function POST(request: Request) {
         louverColor,
         zipFabricColor,
         fabricColor,
+        glassSystemColor,
         options,
         measurements,
         unit,
