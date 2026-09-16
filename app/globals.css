@@ -1807,6 +1807,32 @@ button:disabled {
   font-size: 0.75rem;
   color: #ffffffb3;
 }
+.ai-stage-shell { min-width: 0; background: #252c29; }
+.view-tabs { display: flex; gap: .45rem; padding: .7rem; overflow-x: auto; background: #101715; }
+.view-tabs button { min-height: 44px; white-space: nowrap; border: 1px solid #ffffff42; background: transparent; color: white; padding: .65rem .9rem; }
+.view-tabs button[aria-selected="true"] { background: var(--copper); border-color: var(--copper); }
+.active-view-label { color: white; background: #18211f; margin: 0; padding: .55rem .8rem; font-size: .75rem; }
+.multi-view-upload-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin-bottom: 1rem; }
+.view-upload-card { min-width: 0; border: 1px solid var(--line); background: white; padding: .6rem; display: grid; gap: .45rem; }
+.view-upload-card img { width: 100%; height: 72px; object-fit: contain; background: #161b19; }
+.view-upload-card div { min-width: 0; display: grid; gap: .25rem; }
+.view-upload-card strong, .view-upload-card small { overflow-wrap: anywhere; font-size: .68rem; }
+.view-upload-card label, .view-upload-card button { min-height: 44px; display: grid; place-items: center; border: 1px solid var(--line); background: #f4f1ea; font-size: .68rem; cursor: pointer; }
+.view-upload-card input { position: absolute; opacity: 0; pointer-events: none; }
+.stale-concept { position: absolute; z-index: 5; left: 1rem; right: 1rem; top: 4rem; padding: .65rem; color: white; background: #8b5d32e8; font-size: .72rem; }
+.batch-status, .update-needed { color: #5c625f; font-size: .75rem; line-height: 1.5; }
+.multi-angle-results { margin-top: 2rem; color: var(--ink); background: #f4f1ea; padding: clamp(1rem, 3vw, 2rem); overflow: hidden; }
+.multi-angle-results h3 { margin: 0 0 1rem; font: 400 clamp(1.4rem, 3vw, 2.2rem) Georgia; }
+.angle-carousel { overflow: hidden; touch-action: pan-y pinch-zoom; }
+.angle-carousel-track { display: flex; }
+.angle-carousel-slide { flex: 0 0 100%; min-width: 0; }
+.angle-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.angle-pair figure { margin: 0; min-width: 0; }
+.angle-pair img { width: 100%; height: min(52vw, 520px); object-fit: contain; background: #161b19; display: block; }
+.angle-pair figcaption { padding: .5rem; text-transform: uppercase; letter-spacing: .1em; font-size: .65rem; }
+.angle-carousel-controls { display: flex; justify-content: space-between; align-items: center; gap: .6rem; margin-top: 1rem; }
+.angle-carousel-controls button { min-height: 44px; border: 1px solid var(--line); background: white; padding: .6rem .8rem; }
+.angle-carousel-controls [role="tablist"] { display: flex; gap: .35rem; overflow-x: auto; }
 .visualizer-actions {
   position: relative;
   z-index: 7;
@@ -1931,6 +1957,12 @@ button:disabled {
     inset: auto 0.5rem 0.5rem;
     min-width: 0;
   }
+  .multi-view-upload-cards { grid-template-columns: 1fr; }
+  .view-tabs { max-width: 100%; }
+  .angle-pair { grid-template-columns: 1fr; }
+  .angle-pair img { height: 62vw; max-height: 360px; }
+  .angle-carousel-controls { align-items: stretch; flex-direction: column; }
+  .angle-carousel-controls [role="tablist"] { width: 100%; }
 }
 .error-page {
   min-height: 100vh;

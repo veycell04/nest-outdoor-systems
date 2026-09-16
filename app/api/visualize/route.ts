@@ -354,6 +354,11 @@ export async function POST(request: Request) {
       ? String(specs.colorTarget)
       : null,
     requestedQuality = specs.quality === "high" ? "high" : "preview",
+    projectId = cleanText(input.projectId, 100) || cleanText(specs.projectId, 100) || requestId,
+    viewId = ["front", "left", "right"].includes(String(input.viewId || specs.viewId)) ? String(input.viewId || specs.viewId) : "front",
+    viewLabel = cleanText(input.viewLabel, 40) || cleanText(specs.viewLabel, 40) || "Front View",
+    sharedDesignFingerprint = cleanText(input.sharedDesignFingerprint, 100) || cleanText(specs.sharedDesignFingerprint, 100) || "single-view-legacy",
+    generationOrder = Number.isInteger(specs.generationOrder) ? Number(specs.generationOrder) : 1,
     options = selectedAddOns.map((id) => addOnLabels[id]),
     measurements =
       typeof specs.measurements === "object" && specs.measurements
@@ -381,6 +386,9 @@ export async function POST(request: Request) {
           requestedQuality,
           editMode,
           colorTarget,
+          projectId,
+          viewId,
+          sharedDesignFingerprint,
         },
     cacheKey = generationCacheKey(photoBytes, maskBytes, cacheConfiguration),
     cachedPath = `visualizer/${owner}/cache/${cacheKey}/result.jpg`;
@@ -408,6 +416,9 @@ export async function POST(request: Request) {
     productId,
     selectedAddOns,
     referencePaths,
+    projectId,
+    viewId,
+    generationOrder,
   });
   try {
     const cached = await head(cachedPath);
@@ -422,6 +433,10 @@ export async function POST(request: Request) {
         glassSystemColor,
         selectedAddOns,
         referencePaths,
+        projectId,
+        viewId,
+        viewLabel,
+        sharedDesignFingerprint,
         options,
         measurements,
         unit,
@@ -510,6 +525,7 @@ export async function POST(request: Request) {
   const prompt = [
     `Image 1 is the customer's property photo and the only edit target. Image 2 is the four-corner polygon mask and restricts every modification to its transparent editable region. ${referenceRoles}`,
     generationTask,
+    `MULTI-ANGLE CONSISTENCY: This photograph is the ${viewLabel} of the same customer project (${projectId}). Preserve exactly the selected primary system, selected add-ons, frame construction, roof construction, component colors, glass configuration and lighting configuration across every project view. Change only camera perspective and the portions naturally visible from this angle. Shared design fingerprint: ${sharedDesignFingerprint}. Every selected add-on remains mandatory where its installation side is naturally visible; do not force invisible rear components into the photograph when they are naturally occluded.`,
     editMode === "color_update"
       ? `Keep the installed ${product.label} and every installed add-on unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}. Solidroll and every other installed product must remain clearly visible and must not be removed, replaced, redesigned, moved, or regenerated.`
       : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these selected add-ons: ${options.length ? options.join(", ") : "none"}. Every selected add-on must be clearly and visibly installed in the final concept. The result is invalid if any selected add-on is missing. ${mandatoryAddOnInstructions} ${pvcEnclosureInstructions}`,
@@ -561,6 +577,9 @@ export async function POST(request: Request) {
       productId,
       selectedAddOns,
       referencePaths,
+      projectId,
+      viewId,
+      generationOrder,
     });
   } catch (error) {
     return fail(
@@ -593,6 +612,9 @@ export async function POST(request: Request) {
     metadataBytes,
     selectedAddOns,
     referencePaths,
+    projectId,
+    viewId,
+    generationOrder,
   });
   recent.push(now);
   requests.set(key, recent);
@@ -687,6 +709,10 @@ export async function POST(request: Request) {
         glassSystemColor,
         selectedAddOns,
         referencePaths,
+        projectId,
+        viewId,
+        viewLabel,
+        sharedDesignFingerprint,
         options,
         measurements,
         unit,

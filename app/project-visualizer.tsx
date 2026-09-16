@@ -4,6 +4,7 @@ import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
+import useEmblaCarousel from "embla-carousel-react";
 import {
   isGeneratedResultUrl,
   products,
@@ -30,11 +31,18 @@ export type VisualizerHandoff = {
   productId: string;
   context: string;
   conceptImage?: string;
+  conceptImages?: { viewId: ProjectViewId; label: string; image: string }[];
 };
+export type ProjectViewId = "front" | "left" | "right";
 type Measurements = { width: string; depth: string; height: string };
+type NormalizedPhoto = {
+  file: File; url: string; normalized: Blob; hash: string;
+  originalBytes: number; width: number; height: number;
+};
 type ColorTarget = "frame" | "louver" | "zip_fabric" | "fabric" | "glass_system" | "frame_and_matching_louvers";
 type Concept = {
   image: string;
+  referenceUrl: string;
   productId: string;
   productLabel: string;
   measurements: Measurements;
@@ -43,6 +51,37 @@ type Concept = {
   addOns: AddOnId[];
   quality: "preview" | "high";
 };
+export type ProjectView = {
+  id: ProjectViewId;
+  label: string;
+  required: boolean;
+  photo: NormalizedPhoto | null;
+  placement: PolygonPoint[];
+  concept: Concept | null;
+  status: string;
+  requestId: string | null;
+  uploadProgress: number;
+  generating: boolean;
+  stale: boolean;
+};
+const projectViewDefinitions = [
+  { id: "front", label: "Front View", required: true },
+  { id: "left", label: "Left View", required: false },
+  { id: "right", label: "Right View", required: false },
+] as const;
+export function createProjectViews(): ProjectView[] {
+  return projectViewDefinitions.map((view) => ({
+    ...view, photo: null, placement: [], concept: null, status: "",
+    requestId: null, uploadProgress: 0, generating: false, stale: false,
+  }));
+}
+export function updateProjectViewState(
+  views: ProjectView[],
+  viewId: ProjectViewId,
+  patch: Partial<ProjectView>,
+) {
+  return views.map((view) => view.id === viewId ? { ...view, ...patch } : view);
+}
 type ColorUpdate = { target: ColorTarget; source: Concept; sequence: number };
 const frameColors = [
   ["Anthracite Gray", "#3b4141"], ["Matte Black", "#171918"],
@@ -136,6 +175,48 @@ function CustomColorFields({
     </div>
   );
 }
+function MultiAngleResults({ views }: { views: ProjectView[] }) {
+  const generated = views.filter((view) => view.photo && view.concept);
+  const [viewportRef, embla] = useEmblaCarousel({ loop: false, dragFree: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  useEffect(() => {
+    if (!embla) return;
+    const select = () => setSelectedIndex(embla.selectedScrollSnap());
+    embla.on("select", select);
+    select();
+    return () => { embla.off("select", select); };
+  }, [embla]);
+  if (!generated.length) return null;
+  return (
+    <section className="multi-angle-results" aria-label="Generated project angles">
+      <h3>Explore your project from each uploaded angle</h3>
+      <div className="angle-carousel" ref={viewportRef} tabIndex={0} onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") embla?.scrollPrev();
+        if (event.key === "ArrowRight") embla?.scrollNext();
+      }}>
+        <div className="angle-carousel-track">
+          {generated.map((view) => (
+            <article className="angle-carousel-slide" key={view.id}>
+              <strong>{view.label}</strong>
+              <div className="angle-pair">
+                <figure><img src={view.photo!.url} alt={`Original ${view.label}`} /><figcaption>Before</figcaption></figure>
+                <figure><img src={view.concept!.image} alt={`${view.label} AI concept`} /><figcaption>AI Concept</figcaption></figure>
+              </div>
+              {view.stale && <p className="update-needed">Update needed — Design selections changed. Regenerate this view to apply them.</p>}
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="angle-carousel-controls">
+        <button type="button" aria-label="Previous project angle" onClick={() => embla?.scrollPrev()}>Previous</button>
+        <div role="tablist" aria-label="Generated angle thumbnails">
+          {generated.map((view, index) => <button key={view.id} type="button" role="tab" aria-selected={selectedIndex === index} aria-label={`Show ${view.label}`} onClick={() => embla?.scrollTo(index)}>{view.label}</button>)}
+        </div>
+        <button type="button" aria-label="Next project angle" onClick={() => embla?.scrollNext()}>Next</button>
+      </div>
+    </section>
+  );
+}
 export function containRect(
   containerWidth: number,
   containerHeight: number,
@@ -211,6 +292,16 @@ const hashBlob = async (blob: Blob) =>
   )
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+export const sharedDesignFingerprintSource = (configuration: Record<string, unknown>) => {
+  const canonicalize = (value: unknown): unknown =>
+    Array.isArray(value) ? value.map(canonicalize) : value && typeof value === "object"
+      ? Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonicalize(item)]))
+      : value;
+  return JSON.stringify(canonicalize(configuration));
+};
+const hashText = async (value: string) =>
+  Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))))
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
 export function ProjectVisualizer({
   onRequestProject,
@@ -221,15 +312,27 @@ export function ProjectVisualizer({
   selectedProductId: string;
   onProductChange: (id: string) => void;
 }) {
-  const [photo, setPhoto] = useState<{
-    file: File;
-    url: string;
-    normalized: Blob;
-    hash: string;
-    originalBytes: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [views, setViews] = useState<ProjectView[]>(createProjectViews),
+    [activeViewId, setActiveViewId] = useState<ProjectViewId>("front"),
+    [batchGenerating, setBatchGenerating] = useState(false),
+    [batchStatus, setBatchStatus] = useState("");
+  const viewsRef = useRef(views),
+    projectIdRef = useRef(crypto.randomUUID()),
+    batchCancelledRef = useRef(false),
+    batchGeneratingRef = useRef(false);
+  const activeView = views.find((view) => view.id === activeViewId) || views[0],
+    photo = activeView.photo,
+    placement = activeView.placement,
+    result = activeView.concept,
+    status = activeView.status,
+    uploadProgress = activeView.uploadProgress,
+    generating = activeView.generating;
+  const patchView = useCallback((viewId: ProjectViewId, patch: Partial<ProjectView>) => {
+    setViews((current) => updateProjectViewState(current, viewId, patch));
+  }, []);
+  const setPlacement = useCallback((points: PolygonPoint[]) => patchView(activeViewId, { placement: points }), [activeViewId, patchView]);
+  const setStatus = useCallback((next: string) => patchView(activeViewId, { status: next }), [activeViewId, patchView]);
+  const setGenerating = useCallback((next: boolean) => patchView(activeViewId, { generating: next }), [activeViewId, patchView]);
   const [measurements, setMeasurements] = useState<Measurements>({
       width: "",
       depth: "",
@@ -253,14 +356,9 @@ export function ProjectVisualizer({
     [glassCustomColorName, setGlassCustomColorName] = useState(""),
     [ledTemperature, setLedTemperature] = useState("Warm White"),
     [ledPlacement, setLedPlacement] = useState("Perimeter LED");
-  const [result, setResult] = useState<Concept | null>(null),
-    [compare, setCompare] = useState(50),
-    [generating, setGenerating] = useState(false),
-    [status, setStatus] = useState(""),
-    [uploadProgress, setUploadProgress] = useState(0),
+  const [compare, setCompare] = useState(50),
     [elapsed, setElapsed] = useState(0),
     [updatingColors, setUpdatingColors] = useState(false),
-    [placement, setPlacement] = useState<PolygonPoint[]>([]),
     [displayBounds, setDisplayBounds] =
       useState<ReturnType<typeof containRect>>(null);
   const abortRef = useRef<AbortController | null>(null),
@@ -270,7 +368,7 @@ export function ProjectVisualizer({
     generatingRef = useRef(false),
     colorUpdateActiveRef = useRef(false),
     activeRequestRef = useRef<string | null>(null),
-    generateRef = useRef<(highQuality?: boolean, colorUpdate?: ColorUpdate) => Promise<void>>(async () => {}),
+    generateRef = useRef<(highQuality?: boolean, colorUpdate?: ColorUpdate, viewId?: ProjectViewId, generationOrder?: number) => Promise<void>>(async () => {}),
     stageRef = useRef<HTMLDivElement | null>(null);
   const primaryId: PrimarySystemId = isPrimarySystemId(selectedProductId)
     ? selectedProductId
@@ -315,18 +413,12 @@ export function ProjectVisualizer({
     const timer = setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, [generating]);
-  useEffect(
-    () => () => {
-      if (photo) URL.revokeObjectURL(photo.url);
-    },
-    [photo],
-  );
-  useEffect(
-    () => () => {
-      if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
-    },
-    [result],
-  );
+  useEffect(() => () => {
+    for (const view of viewsRef.current) {
+      if (view.photo) URL.revokeObjectURL(view.photo.url);
+      if (view.concept?.image.startsWith("blob:")) URL.revokeObjectURL(view.concept.image);
+    }
+  }, []);
   useEffect(() => {
     recalculateDisplayBounds();
     const stage = stageRef.current;
@@ -342,17 +434,19 @@ export function ProjectVisualizer({
     };
   }, [recalculateDisplayBounds]);
 
-  async function choosePhoto(file?: File) {
+  async function choosePhoto(file?: File, viewId: ProjectViewId = activeViewId) {
     if (!file) return;
+    const targetView = viewsRef.current.find((view) => view.id === viewId)!;
+    setActiveViewId(viewId);
     abortRef.current?.abort();
     if (
       !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
       file.size > 30 * 1024 * 1024
     ) {
-      setStatus("Choose a JPG, PNG, or WEBP photo smaller than 30 MB.");
+      patchView(viewId, { status: "Choose a JPG, PNG, or WEBP photo smaller than 30 MB." });
       return;
     }
-    setStatus("Preparing photo…");
+    patchView(viewId, { status: "Preparing photo…" });
     try {
       const bitmap = await createImageBitmap(file, {
         imageOrientation: "from-image",
@@ -381,8 +475,9 @@ export function ProjectVisualizer({
       }
       if (normalized.size > 2 * 1024 * 1024) throw new Error("large");
       const hash = await hashBlob(normalized);
-      if (photo) URL.revokeObjectURL(photo.url);
-      setPhoto({
+      if (targetView.photo) URL.revokeObjectURL(targetView.photo.url);
+      if (targetView.concept?.image.startsWith("blob:")) URL.revokeObjectURL(targetView.concept.image);
+      const normalizedPhoto: NormalizedPhoto = {
         file,
         url: URL.createObjectURL(normalized),
         normalized,
@@ -390,22 +485,31 @@ export function ProjectVisualizer({
         originalBytes: file.size,
         width: canvas.width,
         height: canvas.height,
+      };
+      patchView(viewId, {
+        photo: normalizedPhoto, concept: null, placement: [], stale: false,
+        requestId: null, uploadProgress: 0,
+        status: `Photo ready · orientation normalized · ${canvas.width} × ${canvas.height} · ${(normalized.size / 1024 / 1024).toFixed(1)} MB`,
       });
-      setResult(null);
       setCompare(50);
-      setPlacement([]);
-      setStatus(
-        `Photo ready · ${canvas.width} × ${canvas.height} · ${(normalized.size / 1024 / 1024).toFixed(1)} MB`,
-      );
     } catch (error) {
-      setStatus(
+      patchView(viewId, { status:
         error instanceof Error && error.message === "large"
           ? "This photo is too large to process. Please choose another photo."
           : "This image could not be prepared. Choose another photo at least 512 × 512 pixels.",
-      );
+      });
     }
   }
-  async function automaticMask() {
+  function removePhoto(viewId: ProjectViewId) {
+    const view = viewsRef.current.find((item) => item.id === viewId);
+    if (!view || view.required || !view.photo) return;
+    URL.revokeObjectURL(view.photo.url);
+    if (view.concept?.image.startsWith("blob:")) URL.revokeObjectURL(view.concept.image);
+    patchView(viewId, { photo: null, placement: [], concept: null, status: "", requestId: null, uploadProgress: 0, generating: false, stale: false });
+    if (activeViewId === viewId) setActiveViewId("front");
+  }
+  async function automaticMask(view: ProjectView = activeView) {
+    const { photo, placement } = view;
     if (!photo) throw new Error("Photo is not ready");
     const canvas = document.createElement("canvas");
     canvas.width = photo.width;
@@ -436,15 +540,15 @@ export function ProjectVisualizer({
     context.restore();
     return toPng(canvas);
   }
-  async function normalizeConcept(imageUrl: string) {
-    if (!photo) throw new Error("Photo is not ready");
+  async function normalizeConcept(imageUrl: string, targetPhoto: NormalizedPhoto = photo!) {
+    if (!targetPhoto) throw new Error("Photo is not ready");
     const response = await fetch(imageUrl);
     if (!response.ok)
       throw new Error("The generated concept could not be loaded.");
     const bitmap = await createImageBitmap(await response.blob()),
       canvas = document.createElement("canvas");
-    canvas.width = photo.width;
-    canvas.height = photo.height;
+    canvas.width = targetPhoto.width;
+    canvas.height = targetPhoto.height;
     const context = canvas.getContext("2d");
     if (!context)
       throw new Error("The generated concept could not be prepared.");
@@ -466,8 +570,10 @@ export function ProjectVisualizer({
     if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
     colorTimerRef.current = null;
     if (updatingColors) abortRef.current?.abort();
-    if (result?.image.startsWith("blob:")) URL.revokeObjectURL(result.image);
-    setResult(null);
+    setViews((current) => current.map((view) => view.concept ? {
+      ...view, stale: true,
+      status: "Design selections changed. Regenerate this view to apply them.",
+    } : view));
     setCompare(50);
   }
   const displayColor = (value: string, customHex: string, customName: string) =>
@@ -479,6 +585,9 @@ export function ProjectVisualizer({
     frameCustomColor,
     frameCustomColorName,
   );
+  useEffect(() => {
+    viewsRef.current = views;
+  }, [views]);
   const resolvedLouverColor =
     louverColor === "Match Frame"
       ? resolvedFrameColor
@@ -505,6 +614,10 @@ export function ProjectVisualizer({
   };
   function queueColorUpdate(target: ColorTarget, apply: () => void) {
     apply();
+    setViews((current) => current.map((view) => view.id !== activeViewId && view.concept ? {
+      ...view, stale: true,
+      status: "Design selections changed. Regenerate this view to apply them.",
+    } : view));
     if (!result) return;
     const sequence = ++colorSequenceRef.current;
     if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
@@ -522,7 +635,6 @@ export function ProjectVisualizer({
     };
     colorTimerRef.current = setTimeout(run, 650);
   }
-  const placementReady = isPlacementReady(placement);
   function cancelPendingColorUpdate() {
     colorSequenceRef.current += 1;
     if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
@@ -539,11 +651,15 @@ export function ProjectVisualizer({
     abortRef.current = null;
   }
   function startManualGeneration(highQuality = false) {
+    if (!viewsRef.current.find((view) => view.id === "front")?.photo) {
+      setStatus("Front View photo missing. Upload the required Front View first.");
+      return;
+    }
     if (!photo) {
       setStatus("Photo missing. Upload a valid project-area photo first.");
       return;
     }
-    if (!placementReady) {
+    if (!isPlacementReady(placement)) {
       setStatus("Installation area incomplete. Select exactly four valid corner points.");
       return;
     }
@@ -552,7 +668,7 @@ export function ProjectVisualizer({
       setStatus("Another request active. Cancel it before starting a new concept.");
       return;
     }
-    void generateRef.current(highQuality);
+    void generateRef.current(highQuality, undefined, activeViewId);
   }
   function choosePrimary(nextId: PrimarySystemId) {
     clearConcept();
@@ -614,12 +730,28 @@ export function ProjectVisualizer({
       `AI concept generated: ${concept ? "Yes" : "No"}`,
     ].filter(Boolean).join("\n");
   }
-  async function generate(highQuality = false, colorUpdate?: ColorUpdate) {
+  function multiViewSummary(successful: { viewId: ProjectViewId; label: string; image: string }[]) {
+    const uploaded = viewsRef.current.filter((view) => view.photo);
+    return [
+      summary(selected, successful.length > 0),
+      `Uploaded views: ${uploaded.length} (${uploaded.map((view) => view.label).join(", ")})`,
+      `Successfully generated views: ${successful.length ? successful.map((view) => view.label).join(", ") : "None"}`,
+      ...successful.map((view) => `${view.label} concept reference: ${view.image}`),
+    ].join("\n");
+  }
+  async function generate(highQuality = false, colorUpdate?: ColorUpdate, viewId: ProjectViewId = activeViewId, generationOrder = 1) {
+    const targetView = viewsRef.current.find((view) => view.id === viewId) || viewsRef.current[0],
+      photo = targetView.photo,
+      placement = targetView.placement,
+      result = targetView.concept,
+      setStatus = (next: string) => patchView(viewId, { status: next }),
+      setUploadProgress = (next: number) => patchView(viewId, { uploadProgress: next }),
+      setGenerating = (next: boolean) => patchView(viewId, { generating: next });
     if (!photo) {
       setStatus("Photo missing. Upload a valid project-area photo first.");
       return;
     }
-    if (!placementReady) {
+    if (!isPlacementReady(placement)) {
       setStatus("Installation area incomplete. Select exactly four valid corner points.");
       return;
     }
@@ -628,6 +760,7 @@ export function ProjectVisualizer({
       return;
     }
     const requestId = crypto.randomUUID();
+    patchView(viewId, { requestId });
     activeRequestRef.current = requestId;
     generatingRef.current = true;
     colorUpdateActiveRef.current = Boolean(colorUpdate);
@@ -656,6 +789,10 @@ export function ProjectVisualizer({
       controller.abort();
     }, 90_000);
     try {
+      const sharedDesignFingerprint = await hashText(sharedDesignFingerprintSource({
+          productId: selected.id, ...designSpecs, measurements,
+        })),
+        projectId = projectIdRef.current;
       const editSource = colorUpdate
           ? await fetch(colorUpdate.source.image).then((response) => {
               if (!response.ok) throw new Error("The current concept could not be prepared for recoloring.");
@@ -663,7 +800,7 @@ export function ProjectVisualizer({
             })
           : photo.normalized,
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
-        mask = await automaticMask(),
+        mask = await automaticMask(targetView),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
       diagnostic.append("mask", mask, "mask.png");
@@ -675,6 +812,10 @@ export function ProjectVisualizer({
           ...designSpecs,
           editMode: colorUpdate ? "color_update" : "install",
           colorTarget: colorUpdate?.target || null,
+          projectId,
+          viewId,
+          viewLabel: targetView.label,
+          sharedDesignFingerprint,
           quality: highQuality ? "high" : "preview",
         }),
       );
@@ -767,6 +908,10 @@ export function ProjectVisualizer({
             photoHash: editSourceHash,
             productId: selected.id,
             requestId,
+            projectId,
+            viewId,
+            viewLabel: targetView.label,
+            sharedDesignFingerprint,
             specs: {
               ...designSpecs,
               measurements,
@@ -775,6 +920,11 @@ export function ProjectVisualizer({
               quality: highQuality ? "high" : "preview",
               editMode: colorUpdate ? "color_update" : "install",
               colorTarget: colorUpdate?.target || null,
+              projectId,
+              viewId,
+              viewLabel: targetView.label,
+              sharedDesignFingerprint,
+              generationOrder,
             },
           }),
           signal: controller.signal,
@@ -806,9 +956,10 @@ export function ProjectVisualizer({
         throw new Error(
           `The image service returned the product reference instead of a generated concept. Reference: ${requestId}`,
         );
-      const normalizedConceptUrl = await normalizeConcept(payload.imageUrl),
+      const normalizedConceptUrl = await normalizeConcept(payload.imageUrl, photo),
         concept: Concept = {
           image: normalizedConceptUrl,
+          referenceUrl: payload.imageUrl,
           productId: selected.id,
           productLabel: selected.label,
           measurements: { ...measurements },
@@ -821,7 +972,9 @@ export function ProjectVisualizer({
         URL.revokeObjectURL(normalizedConceptUrl);
         return;
       }
-      setResult(concept);
+      if (result?.image.startsWith("blob:") && result.image !== normalizedConceptUrl)
+        URL.revokeObjectURL(result.image);
+      patchView(viewId, { concept, stale: false, requestId, status: `${disclaimer}${payload.cached ? " Previous matching result reused." : ""}` });
       setCompare(50);
       trackEvent("visualizer_generate_complete", {
         product_id: selected.id,
@@ -829,14 +982,10 @@ export function ProjectVisualizer({
         add_on_count: addOns.length,
         cached_result: Boolean(payload.cached),
       });
-      setStatus(
-        `${disclaimer}${payload.cached ? " Previous matching result reused." : ""}`,
-      );
-      onRequestProject({
-        productId: selected.id,
-        context: summary(selected, true),
-        conceptImage: payload.imageUrl,
-      });
+      const successful = viewsRef.current.filter((view) => view.concept && view.id !== viewId)
+        .map((view) => ({ viewId: view.id, label: view.label, image: view.concept!.referenceUrl }));
+      successful.push({ viewId, label: targetView.label, image: payload.imageUrl });
+      onRequestProject({ productId: selected.id, context: multiViewSummary(successful), conceptImage: payload.imageUrl, conceptImages: successful });
     } catch (error) {
       const superseded = Boolean(colorUpdate && colorUpdate.sequence !== colorSequenceRef.current);
       const rawMessage = error instanceof Error ? error.message : "Generation failed.",
@@ -856,7 +1005,7 @@ export function ProjectVisualizer({
         setStatus(colorUpdate
           ? `Color update failed. Your previous concept is still available. Retry by selecting the color again. ${message.includes("Reference:") ? message : `Reference: ${requestId}`}`
           : message.includes("Reference:") ? message : `${message} Reference: ${requestId}`);
-        if (!colorUpdate) setResult(null);
+        if (!colorUpdate) patchView(viewId, { status: message.includes("Reference:") ? message : `${message} Reference: ${requestId}` });
       }
     } finally {
       if (activeRequestRef.current === requestId) {
@@ -871,7 +1020,46 @@ export function ProjectVisualizer({
       }
     }
   }
-  generateRef.current = generate;
+  useEffect(() => {
+    generateRef.current = generate;
+  });
+  async function generateReadyViews(updateOnly = false) {
+    if (batchGeneratingRef.current || generatingRef.current) {
+      setBatchStatus("Another request active. Cancel it before starting a multi-angle batch.");
+      return;
+    }
+    if (!viewsRef.current.find((view) => view.id === "front")?.photo) {
+      setBatchStatus("Front View photo missing. Upload the required Front View before generating.");
+      return;
+    }
+    const ready = viewsRef.current.filter((view) =>
+      view.photo && isPlacementReady(view.placement) && (!updateOnly || view.stale || !view.concept),
+    );
+    if (!ready.length) {
+      setBatchStatus("No uploaded views with four valid installation-area points are ready.");
+      return;
+    }
+    batchCancelledRef.current = false;
+    batchGeneratingRef.current = true;
+    setBatchGenerating(true);
+    try {
+      for (let index = 0; index < ready.length; index += 1) {
+        if (batchCancelledRef.current) break;
+        const view = ready[index];
+        setActiveViewId(view.id);
+        setBatchStatus(`Generating view ${index + 1} of ${ready.length} — ${view.label}`);
+        await generateRef.current(false, undefined, view.id, index + 1);
+      }
+    } finally {
+      batchGeneratingRef.current = false;
+      setBatchGenerating(false);
+      setBatchStatus(batchCancelledRef.current ? "Multi-angle generation cancelled. Completed concepts were preserved." : "Multi-angle generation finished. Review each view below.");
+    }
+  }
+  function cancelBatch() {
+    batchCancelledRef.current = true;
+    abortRef.current?.abort();
+  }
   async function downloadConcept() {
     if (!result) return;
     try {
@@ -929,10 +1117,12 @@ export function ProjectVisualizer({
     }
   }
   function consult() {
+    const successful = viewsRef.current.filter((view) => view.concept).map((view) => ({ viewId: view.id, label: view.label, image: view.concept!.referenceUrl }));
     onRequestProject({
       productId: selected.id,
-      context: summary(selected),
-      conceptImage: result?.image,
+      context: multiViewSummary(successful),
+      conceptImage: result?.referenceUrl,
+      conceptImages: successful,
     });
     document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
   }
@@ -955,11 +1145,19 @@ export function ProjectVisualizer({
           </h2>
         </div>
         <p>
-          Upload one project-area photo, choose a system, add any measurements
-          you know, and create a photorealistic concept.
+          Upload up to three photographs of the same installation area and create a consistent multi-angle concept. This is not a true 3D or 360° reconstruction.
         </p>
       </div>
       <div className="ai-workspace">
+        <div className="ai-stage-shell">
+        <div className="view-tabs" role="tablist" aria-label="Uploaded project views">
+          {views.filter((view) => view.photo).map((view) => (
+            <button key={view.id} type="button" role="tab" aria-selected={activeViewId === view.id} onClick={() => setActiveViewId(view.id)}>
+              {view.label}{view.stale ? " · Update needed" : ""}
+            </button>
+          ))}
+        </div>
+        <p className="active-view-label">Editing installation area: {activeView.label}</p>
         <div className="ai-stage" ref={stageRef}>
           {!photo ? (
             <label className="ai-empty">
@@ -969,7 +1167,7 @@ export function ProjectVisualizer({
                 onChange={(event) => choosePhoto(event.target.files?.[0])}
               />
               <ImagePlus />
-              <strong>Upload your project-area photo</strong>
+              <strong>Upload the {activeView.label}</strong>
               <span>Optimized privately in your browser</span>
             </label>
           ) : (
@@ -1035,6 +1233,7 @@ export function ProjectVisualizer({
                       Previous result · {result.productLabel}
                     </span>
                   )}
+                  {activeView.stale && <span className="stale-concept">Update needed — Design selections changed. Regenerate this view to apply them.</span>}
                   <input
                     aria-label="Before and AI concept comparison"
                     type="range"
@@ -1077,33 +1276,28 @@ export function ProjectVisualizer({
             </div>
           )}
         </div>
+        </div>
         <aside className="ai-panel">
           <div className="ai-step">
             <span>01</span>
             <div>
-              <strong>Project-area photo</strong>
+              <strong>Project-area photographs</strong>
               <small>
                 Maximum 1536 px. The original full-resolution file is never
                 uploaded.
               </small>
             </div>
           </div>
-          <label className="visualizer-upload">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => choosePhoto(event.target.files?.[0])}
-            />
-            <ImagePlus size={20} />
-            <span>
-              <strong>{photo?.file.name || "Choose photo"}</strong>
-              <small>
-                {photo
-                  ? `${(photo.normalized.size / 1024 / 1024).toFixed(1)} MB optimized`
-                  : "JPG, PNG or WEBP"}
-              </small>
-            </span>
-          </label>
+          <div className="multi-view-upload-cards">
+            {views.map((view) => (
+              <article className={`view-upload-card${view.photo ? " uploaded" : ""}`} key={view.id}>
+                {view.photo && <img src={view.photo.url} alt={`${view.label} thumbnail`} />}
+                <div><strong>{view.label} — {view.required ? "Required" : "Optional"}</strong><small>{view.photo ? `${view.photo.file.name} · orientation normalized` : "JPG, PNG or WebP"}</small></div>
+                <label><span>{view.photo ? "Replace" : "Upload"} {view.label}</span><input type="file" aria-label={`${view.photo ? "Replace" : "Upload"} ${view.label}`} accept="image/jpeg,image/png,image/webp" onChange={(event) => choosePhoto(event.target.files?.[0], view.id)} /></label>
+                {!view.required && view.photo && <button type="button" onClick={() => removePhoto(view.id)}>Remove</button>}
+              </article>
+            ))}
+          </div>
           <div className="placement-help">
             <small>
               Click or tap four corners around the intended installation area.
@@ -1250,11 +1444,11 @@ export function ProjectVisualizer({
             </dl>
           </div>
           <div className="visualizer-actions">
-            {generating ? (
+            {generating || batchGenerating ? (
               <button
                 type="button"
                 className="button generate"
-                onClick={() => abortRef.current?.abort()}
+                onClick={() => batchGenerating ? cancelBatch() : abortRef.current?.abort()}
               >
                 <X /> Cancel
               </button>
@@ -1264,9 +1458,11 @@ export function ProjectVisualizer({
                 className="button generate"
                 onClick={() => startManualGeneration(false)}
               >
-                <Sparkles /> Generate My Concept
+                <Sparkles /> Generate This View
               </button>
             )}
+            {!generating && !batchGenerating && <button type="button" className="visualizer-secondary batch-generate" onClick={() => generateReadyViews(false)}>Generate All Ready Views</button>}
+            {!generating && !batchGenerating && views.some((view) => view.stale) && <button type="button" className="visualizer-secondary batch-generate" onClick={() => generateReadyViews(true)}>Update All Views</button>}
             {result && result.quality !== "high" && (
               <button
                 type="button"
@@ -1301,8 +1497,10 @@ export function ProjectVisualizer({
           >
             {status || disclaimer}
           </p>
+          {batchStatus && <p className="batch-status" role="status" aria-live="polite">{batchStatus}</p>}
         </aside>
       </div>
+      <MultiAngleResults views={views} />
     </section>
   );
 }

@@ -197,11 +197,72 @@ test("the photo visualizer stays separate from the 3D configurator", async () =>
     /brush-size|Erase mask|Reset mask|Paint the installation/i,
   );
   assert.doesNotMatch(source, /Customize in 3D|<PergolaViewer|advanced-3d|<Canvas/);
-  assert.match(source, /Generate My Concept/);
+  assert.match(source, /Generate This View/);
   assert.match(source, /Create Higher-Quality Version/);
   assert.match(source, /90_000/);
   assert.doesNotMatch(page, /<PergolaViewer/);
   assert.doesNotMatch(page, /id="estimate"/);
+});
+
+test("multi-angle views retain independent photos, polygons, and concepts", async () => {
+  const { createProjectViews, updateProjectViewState } = await vite.ssrLoadModule(
+      "/app/project-visualizer.tsx",
+    ),
+    original = createProjectViews(),
+    polygon = [
+      { x: 0.1, y: 0.1 }, { x: 0.9, y: 0.1 },
+      { x: 0.9, y: 0.9 }, { x: 0.1, y: 0.9 },
+    ],
+    front = updateProjectViewState(original, "front", { placement: polygon }),
+    left = updateProjectViewState(front, "left", { status: "Photo ready" });
+  assert.deepEqual(original.map(({ id, required }) => [id, required]), [
+    ["front", true], ["left", false], ["right", false],
+  ]);
+  assert.equal(left.find((view) => view.id === "front").placement.length, 4);
+  assert.equal(left.find((view) => view.id === "left").status, "Photo ready");
+  assert.equal(left.find((view) => view.id === "right").placement.length, 0);
+});
+
+test("shared multi-angle design fingerprints are stable across property order", async () => {
+  const { sharedDesignFingerprintSource } = await vite.ssrLoadModule(
+    "/app/project-visualizer.tsx",
+  );
+  assert.equal(
+    sharedDesignFingerprintSource({ productId: "pvc", colors: { frame: "Black", roof: "White" }, addOns: ["solidroll"] }),
+    sharedDesignFingerprintSource({ addOns: ["solidroll"], colors: { roof: "White", frame: "Black" }, productId: "pvc" }),
+  );
+});
+
+test("multi-angle batches are sequential, cancellable, stale-safe, and handed off", async () => {
+  const fs = await import("node:fs/promises"),
+    source = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    css = await fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(source, /for \(let index = 0; index < ready\.length; index \+= 1\)/);
+  assert.match(source, /await generateRef\.current\(false, undefined, view\.id, index \+ 1\)/);
+  assert.doesNotMatch(source, /Promise\.all\(ready\.map/);
+  assert.match(source, /batchCancelledRef\.current/);
+  assert.match(source, /Completed concepts were preserved/);
+  assert.match(source, /view\.concept \? \{[\s\S]*stale: true/);
+  assert.match(source, /conceptImages: successful/);
+  assert.match(source, /useEmblaCarousel/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*multi-view-upload-cards/);
+  assert.match(css, /overflow-x:\s*(auto|hidden)/);
+});
+
+test("multi-angle API configuration separates views and preserves mandatory Solidroll", async () => {
+  const fs = await import("node:fs/promises"),
+    route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8"),
+    { generationCacheKey } = await vite.ssrLoadModule("/app/api/visualize/route.ts"),
+    photo = new Uint8Array([1, 2, 3]),
+    mask = new Uint8Array([4, 5, 6]),
+    shared = { projectId: "project-1", sharedDesignFingerprint: "same-design", selectedAddOns: ["solidroll"] },
+    front = generationCacheKey(photo, mask, { ...shared, viewId: "front" }),
+    left = generationCacheKey(photo, mask, { ...shared, viewId: "left" });
+  assert.notEqual(front, left);
+  assert.match(route, /MULTI-ANGLE CONSISTENCY:/);
+  assert.match(route, /Every selected add-on remains mandatory where its installation side is naturally visible/);
+  assert.match(route, /projectId,\s*viewId,\s*sharedDesignFingerprint/);
+  assert.match(route, /generationOrder/);
 });
 
 test("manual concept generation validates readiness and owns its request lock", async () => {
@@ -452,7 +513,7 @@ test("design playground keeps colors independent and remains mobile and keyboard
   assert.match(route, /frame_and_matching_louvers/);
   assert.match(client, /Frame color preference:/);
   assert.match(client, /Louver \/ roof color preference:/);
-  assert.match(client, /context: summary\(selected/);
+  assert.match(client, /context: multiViewSummary\(successful\)/);
   assert.match(css, /@media \(max-width: 430px\)/);
   assert.match(css, /\.color-swatches[\s\S]{0,80}flex-wrap:\s*wrap/);
   assert.match(css, /min-height:\s*44px/);

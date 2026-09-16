@@ -106,6 +106,9 @@ export function logTransfer(details: {
   responseUrl?: string | null;
   selectedAddOns?: readonly string[];
   referencePaths?: readonly string[];
+  projectId?: string | null;
+  viewId?: string | null;
+  generationOrder?: number | null;
 }) {
   console.info(
     JSON.stringify({
@@ -123,6 +126,9 @@ export function logTransfer(details: {
       responseUrl: details.responseUrl ?? null,
       selectedAddOns: details.selectedAddOns ?? [],
       referencePaths: details.referencePaths ?? [],
+      projectId: details.projectId ?? null,
+      viewId: details.viewId ?? null,
+      generationOrder: details.generationOrder ?? null,
     }),
   );
 }
