@@ -1812,20 +1812,27 @@ button:disabled {
 .view-tabs button { min-height: 44px; white-space: nowrap; border: 1px solid #ffffff42; background: transparent; color: white; padding: .65rem .9rem; }
 .view-tabs button[aria-selected="true"] { background: var(--copper); border-color: var(--copper); }
 .active-view-label { color: white; background: #18211f; margin: 0; padding: .55rem .8rem; font-size: .75rem; }
-.multi-view-upload-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin-bottom: 1rem; }
-.view-upload-card { min-width: 0; border: 1px solid var(--line); background: white; padding: .6rem; display: grid; gap: .45rem; }
-.view-upload-card img { width: 100%; height: 72px; object-fit: contain; background: #161b19; }
-.view-upload-card div { min-width: 0; display: grid; gap: .25rem; }
-.view-upload-card strong, .view-upload-card small { overflow-wrap: anywhere; font-size: .68rem; }
-.view-upload-card label, .view-upload-card button { min-height: 44px; display: grid; place-items: center; border: 1px solid var(--line); background: #f4f1ea; font-size: .68rem; cursor: pointer; }
-.view-upload-card input { position: absolute; opacity: 0; pointer-events: none; }
+.add-angle, .replace-angle { min-height: 44px; display: grid; place-items: center; padding: .55rem .8rem; color: white; border: 1px dashed #ffffff66; cursor: pointer; white-space: nowrap; }
+.add-angle input, .replace-angle input { position: absolute; opacity: 0; pointer-events: none; }
+.multi-upload-empty { gap: .75rem; text-align: center; padding: clamp(1rem, 5vw, 3rem); }
+.choose-project-photos, .camera-project-photo { display: inline-grid; min-height: 44px; place-items: center; padding: .7rem 1.2rem; background: var(--copper); color: white; cursor: pointer; }
+.camera-project-photo { background: transparent; border: 1px solid #ffffff70; }
+.choose-project-photos input, .camera-project-photo input { position: absolute; opacity: 0; pointer-events: none; }
+.multi-upload-empty small { max-width: 38rem; line-height: 1.5; }
+.upload-dragging { outline: 3px solid var(--copper); outline-offset: -3px; }
+.angle-classification { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .7rem; color: white; background: #101715; font-size: .75rem; }
+.angle-classification button, .replace-angle { min-height: 44px; border: 1px solid #ffffff42; background: transparent; color: white; padding: .55rem .75rem; }
+.angle-corrections { flex: 1 0 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.angle-corrections label { display: grid; gap: .3rem; overflow-wrap: anywhere; }
+.angle-corrections select { min-height: 44px; width: 100%; }
 .stale-concept { position: absolute; z-index: 5; left: 1rem; right: 1rem; top: 4rem; padding: .65rem; color: white; background: #8b5d32e8; font-size: .72rem; }
 .batch-status, .update-needed { color: #5c625f; font-size: .75rem; line-height: 1.5; }
 .multi-angle-results { margin-top: 2rem; color: var(--ink); background: #f4f1ea; padding: clamp(1rem, 3vw, 2rem); overflow: hidden; }
 .multi-angle-results h3 { margin: 0 0 1rem; font: 400 clamp(1.4rem, 3vw, 2.2rem) Georgia; }
 .angle-carousel { overflow: hidden; touch-action: pan-y pinch-zoom; }
 .angle-carousel-track { display: flex; }
-.angle-carousel-slide { flex: 0 0 100%; min-width: 0; }
+.angle-carousel-slide { flex: 0 0 100%; min-width: 0; transform: perspective(1000px) rotateY(4deg) scale(.985); opacity: .82; transition: transform .4s ease, opacity .4s ease; }
+.angle-carousel-slide.active { transform: perspective(1000px) rotateY(0) scale(1); opacity: 1; }
 .angle-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .angle-pair figure { margin: 0; min-width: 0; }
 .angle-pair img { width: 100%; height: min(52vw, 520px); object-fit: contain; background: #161b19; display: block; }
@@ -1957,8 +1964,11 @@ button:disabled {
     inset: auto 0.5rem 0.5rem;
     min-width: 0;
   }
-  .multi-view-upload-cards { grid-template-columns: 1fr; }
   .view-tabs { max-width: 100%; }
+  .multi-upload-empty { min-height: 0; height: calc(100% - 1rem); width: calc(100% - 1rem); gap: .4rem; padding: .75rem; }
+  .multi-upload-empty svg { width: 28px; height: 28px; }
+  .multi-upload-empty strong { font-size: 1.25rem; }
+  .angle-corrections { grid-template-columns: 1fr; }
   .angle-pair { grid-template-columns: 1fr; }
   .angle-pair img { height: 62vw; max-height: 360px; }
   .angle-carousel-controls { align-items: stretch; flex-direction: column; }

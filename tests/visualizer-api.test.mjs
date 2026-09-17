@@ -245,7 +245,7 @@ test("multi-angle batches are sequential, cancellable, stale-safe, and handed of
   assert.match(source, /view\.concept \? \{[\s\S]*stale: true/);
   assert.match(source, /conceptImages: successful/);
   assert.match(source, /useEmblaCarousel/);
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]*multi-view-upload-cards/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*multi-upload-empty/);
   assert.match(css, /overflow-x:\s*(auto|hidden)/);
 });
 
@@ -263,6 +263,68 @@ test("multi-angle API configuration separates views and preserves mandatory Soli
   assert.match(route, /Every selected add-on remains mandatory where its installation side is naturally visible/);
   assert.match(route, /projectId,\s*viewId,\s*sharedDesignFingerprint/);
   assert.match(route, /generationOrder/);
+});
+
+test("project-view classification validates unique automatic angle assignments", async () => {
+  const { validateViewClassification } = await vite.ssrLoadModule(
+      "/app/api/visualize/classify-views/route.ts",
+    ),
+    uploadIds = ["photo-12345678", "photo-abcdefgh", "photo-87654321"],
+    valid = validateViewClassification({ sameLocation: true, assignments: [
+      { uploadId: uploadIds[0], view: "left", confidence: 0.91 },
+      { uploadId: uploadIds[1], view: "front", confidence: 0.95 },
+      { uploadId: uploadIds[2], view: "right", confidence: 0.88 },
+    ] }, uploadIds),
+    duplicate = validateViewClassification({ sameLocation: true, assignments: [
+      { uploadId: uploadIds[0], view: "front", confidence: 0.9 },
+      { uploadId: uploadIds[1], view: "front", confidence: 0.8 },
+      { uploadId: uploadIds[2], view: "right", confidence: 0.8 },
+    ] }, uploadIds);
+  assert.deepEqual(valid.assignments.map((item) => item.view), ["left", "front", "right"]);
+  assert.equal(duplicate, null);
+});
+
+test("multi-photo upload, classification fallback, and correction live inside the canvas", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    route = await fs.readFile(new URL("../app/api/visualize/classify-views/route.ts", import.meta.url), "utf8"),
+    css = await fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(client, /<div className=\{`ai-stage/);
+  assert.match(client, /multiple/);
+  assert.match(client, /Choose Project Photos/);
+  assert.match(client, /onDrop=/);
+  assert.match(client, /capture="environment"/);
+  assert.match(client, /Organizing your project views…/);
+  assert.match(client, /confidence < 0\.7/);
+  assert.match(client, /Correct Angles/);
+  assert.match(client, /function correctAngle/);
+  assert.match(client, /temporary order/);
+  assert.match(client, /may show different locations/);
+  assert.match(client, /Installation areas:/);
+  assert.doesNotMatch(client, /multi-view-upload-cards/);
+  assert.match(route, /OPENAI_VISION_MODEL/);
+  assert.match(route, /readSession\(request\)/);
+  assert.match(route, /Analyze these \$\{photos\.length\} photographs together/);
+  assert.match(route, /Do not use filenames or input order/);
+  assert.match(route, /strict: true/);
+  assert.match(route, /new Set\(uploadIds\)/);
+  assert.doesNotMatch(route, /console\.(info|log)\([^\n]*(base64|image_url)/);
+  assert.match(css, /\.visualizer-section \{ overflow-x: clip; \}/);
+});
+
+test("generated project navigation is ordered left, front, right without fabricated frames", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    css = await fs.readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(client, /\["left", "front", "right"\][\s\S]{0,100}flatMap/);
+  assert.match(client, /useEmblaCarousel\(\{ loop: false/);
+  assert.match(client, /ArrowLeft/);
+  assert.match(client, /ArrowRight/);
+  assert.match(client, /270° Project View/);
+  assert.match(client, /Swipe or drag to see your concept from each uploaded angle/);
+  assert.doesNotMatch(client, /interpolat|fabricated|generatedIntermediate/i);
+  assert.match(css, /touch-action: pan-y pinch-zoom/);
+  assert.match(css, /transition: transform \.4s ease/);
 });
 
 test("manual concept generation validates readiness and owns its request lock", async () => {

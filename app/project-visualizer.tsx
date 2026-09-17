@@ -36,7 +36,7 @@ export type VisualizerHandoff = {
 export type ProjectViewId = "front" | "left" | "right";
 type Measurements = { width: string; depth: string; height: string };
 type NormalizedPhoto = {
-  file: File; url: string; normalized: Blob; hash: string;
+  uploadId: string; file: File; url: string; normalized: Blob; hash: string;
   originalBytes: number; width: number; height: number;
 };
 type ColorTarget = "frame" | "louver" | "zip_fabric" | "fabric" | "glass_system" | "frame_and_matching_louvers";
@@ -176,7 +176,8 @@ function CustomColorFields({
   );
 }
 function MultiAngleResults({ views }: { views: ProjectView[] }) {
-  const generated = views.filter((view) => view.photo && view.concept);
+  const generated = (["left", "front", "right"] as ProjectViewId[])
+    .flatMap((id) => views.filter((view) => view.id === id && view.photo && view.concept));
   const [viewportRef, embla] = useEmblaCarousel({ loop: false, dragFree: false });
   const [selectedIndex, setSelectedIndex] = useState(0);
   useEffect(() => {
@@ -189,14 +190,16 @@ function MultiAngleResults({ views }: { views: ProjectView[] }) {
   if (!generated.length) return null;
   return (
     <section className="multi-angle-results" aria-label="Generated project angles">
-      <h3>Explore your project from each uploaded angle</h3>
+      <strong className="project-view-mode">{generated.length === 3 ? "270° Project View" : generated.length === 2 ? "Two-angle Project View" : "Single Project View"}</strong>
+      <h3>Explore Your Project</h3>
+      <p>Swipe or drag to see your concept from each uploaded angle.</p>
       <div className="angle-carousel" ref={viewportRef} tabIndex={0} onKeyDown={(event) => {
         if (event.key === "ArrowLeft") embla?.scrollPrev();
         if (event.key === "ArrowRight") embla?.scrollNext();
       }}>
         <div className="angle-carousel-track">
-          {generated.map((view) => (
-            <article className="angle-carousel-slide" key={view.id}>
+          {generated.map((view, index) => (
+            <article className={`angle-carousel-slide${selectedIndex === index ? " active" : ""}`} key={view.id}>
               <strong>{view.label}</strong>
               <div className="angle-pair">
                 <figure><img src={view.photo!.url} alt={`Original ${view.label}`} /><figcaption>Before</figcaption></figure>
@@ -315,7 +318,11 @@ export function ProjectVisualizer({
   const [views, setViews] = useState<ProjectView[]>(createProjectViews),
     [activeViewId, setActiveViewId] = useState<ProjectViewId>("front"),
     [batchGenerating, setBatchGenerating] = useState(false),
-    [batchStatus, setBatchStatus] = useState("");
+    [batchStatus, setBatchStatus] = useState(""),
+    [classifyingViews, setClassifyingViews] = useState(false),
+    [classificationNotice, setClassificationNotice] = useState(""),
+    [correctingAngles, setCorrectingAngles] = useState(false),
+    [draggingUpload, setDraggingUpload] = useState(false);
   const viewsRef = useRef(views),
     projectIdRef = useRef(crypto.randomUUID()),
     batchCancelledRef = useRef(false),
@@ -326,7 +333,9 @@ export function ProjectVisualizer({
     result = activeView.concept,
     status = activeView.status,
     uploadProgress = activeView.uploadProgress,
-    generating = activeView.generating;
+    generating = activeView.generating,
+    uploadedViews = views.filter((view) => view.photo),
+    readyPlacementCount = uploadedViews.filter((view) => isPlacementReady(view.placement)).length;
   const patchView = useCallback((viewId: ProjectViewId, patch: Partial<ProjectView>) => {
     setViews((current) => updateProjectViewState(current, viewId, patch));
   }, []);
@@ -434,30 +443,21 @@ export function ProjectVisualizer({
     };
   }, [recalculateDisplayBounds]);
 
-  async function choosePhoto(file?: File, viewId: ProjectViewId = activeViewId) {
-    if (!file) return;
-    const targetView = viewsRef.current.find((view) => view.id === viewId)!;
-    setActiveViewId(viewId);
-    abortRef.current?.abort();
+  async function normalizePhoto(file: File): Promise<NormalizedPhoto> {
     if (
       !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-      file.size > 30 * 1024 * 1024
-    ) {
-      patchView(viewId, { status: "Choose a JPG, PNG, or WEBP photo smaller than 30 MB." });
-      return;
-    }
-    patchView(viewId, { status: "Preparing photo…" });
-    try {
-      const bitmap = await createImageBitmap(file, {
+      file.size > 10 * 1024 * 1024
+    ) throw new Error("Choose a JPG, PNG, or WebP photo no larger than 10 MB.");
+    const bitmap = await createImageBitmap(file, {
         imageOrientation: "from-image",
       });
-      if (bitmap.width < 512 || bitmap.height < 512) throw new Error("small");
+      if (bitmap.width < 512 || bitmap.height < 512) throw new Error("Choose a photo at least 512 × 512 pixels.");
       const scale = Math.min(1, 1536 / Math.max(bitmap.width, bitmap.height)),
         canvas = document.createElement("canvas");
       canvas.width = Math.round(bitmap.width * scale);
       canvas.height = Math.round(bitmap.height * scale);
       const normalizationContext = canvas.getContext("2d");
-      if (!normalizationContext) throw new Error("canvas");
+      if (!normalizationContext) throw new Error("This photo could not be prepared.");
       drawContain(
         normalizationContext,
         bitmap,
@@ -473,11 +473,10 @@ export function ProjectVisualizer({
         quality -= 0.08;
         normalized = await toJpeg(canvas, quality);
       }
-      if (normalized.size > 2 * 1024 * 1024) throw new Error("large");
+      if (normalized.size > 2 * 1024 * 1024) throw new Error("This photo is too large to process. Please choose another photo.");
       const hash = await hashBlob(normalized);
-      if (targetView.photo) URL.revokeObjectURL(targetView.photo.url);
-      if (targetView.concept?.image.startsWith("blob:")) URL.revokeObjectURL(targetView.concept.image);
-      const normalizedPhoto: NormalizedPhoto = {
+      return {
+        uploadId: `photo-${crypto.randomUUID()}`,
         file,
         url: URL.createObjectURL(normalized),
         normalized,
@@ -486,19 +485,90 @@ export function ProjectVisualizer({
         width: canvas.width,
         height: canvas.height,
       };
-      patchView(viewId, {
-        photo: normalizedPhoto, concept: null, placement: [], stale: false,
-        requestId: null, uploadProgress: 0,
-        status: `Photo ready · orientation normalized · ${canvas.width} × ${canvas.height} · ${(normalized.size / 1024 / 1024).toFixed(1)} MB`,
+  }
+  async function analysisCopy(photo: NormalizedPhoto) {
+    const bitmap = await createImageBitmap(photo.normalized),
+      scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height)),
+      canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Analysis copy could not be prepared.");
+    drawContain(context, bitmap, bitmap.width, bitmap.height, canvas.width, canvas.height);
+    bitmap.close();
+    return toJpeg(canvas, 0.72);
+  }
+  function arrangePhotos(
+    photos: NormalizedPhoto[],
+    assignments?: { uploadId: string; view: ProjectViewId; confidence: number }[],
+  ) {
+    const fallback: ProjectViewId[] = photos.length === 3 ? ["left", "front", "right"] : ["front", "left"],
+      angleFor = (photo: NormalizedPhoto, index: number) => assignments?.find((item) => item.uploadId === photo.uploadId)?.view || fallback[index],
+      previous = viewsRef.current;
+    setViews(projectViewDefinitions.map((definition) => {
+      const photo = photos.find((item, index) => angleFor(item, index) === definition.id),
+        old = photo ? previous.find((view) => view.photo?.uploadId === photo.uploadId) : null;
+      return photo ? {
+        ...definition, photo,
+        placement: old?.placement || [], concept: old?.concept || null,
+        status: old?.status || `Photo ready · orientation normalized · ${photo.width} × ${photo.height}`,
+        requestId: old?.requestId || null, uploadProgress: old?.uploadProgress || 0,
+        generating: false, stale: old?.stale || false,
+      } : { ...definition, photo: null, placement: [], concept: null, status: "", requestId: null, uploadProgress: 0, generating: false, stale: false };
+    }));
+    const first = (["front", "left", "right"] as ProjectViewId[]).find((id) => photos.some((photo, index) => angleFor(photo, index) === id));
+    if (first) setActiveViewId(first);
+  }
+  async function classifyPhotos(photos: NormalizedPhoto[]) {
+    setClassifyingViews(true);
+    setClassificationNotice("Organizing your project views…");
+    try {
+      const sessionResponse = await fetch("/api/visualize/session", { method: "POST" });
+      if (!sessionResponse.ok) throw new Error("Secure photo session unavailable.");
+      const copies = await Promise.all(photos.map(analysisCopy)), form = new FormData();
+      copies.forEach((copy, index) => {
+        form.append("photos", copy, `${photos[index].uploadId}.jpg`);
+        form.append("uploadIds", photos[index].uploadId);
       });
-      setCompare(50);
+      const response = await fetch("/api/visualize/classify-views", { method: "POST", body: form }),
+        payload = await response.json().catch(() => null);
+      if (!response.ok || !Array.isArray(payload?.assignments)) throw new Error(payload?.error || "Angle classification unavailable.");
+      arrangePhotos(photos, payload.assignments);
+      const lowConfidence = payload.assignments.some((item: { confidence: number }) => item.confidence < 0.7);
+      setClassificationNotice(!payload.sameLocation
+        ? "These photos may show different locations. Please confirm the angles or choose photos of the same project area."
+        : lowConfidence ? "We organized the views automatically. Please confirm the angles." : "Project views organized automatically.");
+      setCorrectingAngles(!payload.sameLocation || lowConfidence);
     } catch (error) {
-      patchView(viewId, { status:
-        error instanceof Error && error.message === "large"
-          ? "This photo is too large to process. Please choose another photo."
-          : "This image could not be prepared. Choose another photo at least 512 × 512 pixels.",
-      });
+      arrangePhotos(photos);
+      setClassificationNotice(`Angle classification unavailable. We kept your photos in a temporary order; please correct the angles. ${error instanceof Error ? error.message : ""}`.trim());
+      setCorrectingAngles(true);
+    } finally {
+      setClassifyingViews(false);
     }
+  }
+  async function choosePhotos(files?: FileList | File[], replaceViewId?: ProjectViewId) {
+    if (!files?.length) return;
+    abortRef.current?.abort();
+    const accepted = Array.from(files).slice(0, replaceViewId ? 1 : 3 - viewsRef.current.filter((view) => view.photo).length);
+    setClassificationNotice("Preparing photos…");
+    const settled = await Promise.allSettled(accepted.map(normalizePhoto)),
+      prepared = settled.flatMap((item) => item.status === "fulfilled" ? [item.value] : []),
+      failures = settled.filter((item) => item.status === "rejected") as PromiseRejectedResult[];
+    if (!prepared.length) {
+      setClassificationNotice(failures[0]?.reason instanceof Error ? failures[0].reason.message : "The selected photos could not be prepared.");
+      return;
+    }
+    const current = viewsRef.current.filter((view) => view.photo && view.id !== replaceViewId).map((view) => view.photo!),
+      combined = [...current, ...prepared].slice(0, 3);
+    if (replaceViewId) {
+      const replaced = viewsRef.current.find((view) => view.id === replaceViewId);
+      if (replaced?.photo) URL.revokeObjectURL(replaced.photo.url);
+      if (replaced?.concept?.image.startsWith("blob:")) URL.revokeObjectURL(replaced.concept.image);
+    }
+    await classifyPhotos(combined);
+    if (failures.length) setClassificationNotice((current) => `${current} ${failures.length} photo failed normalization; the other photos were kept.`.trim());
+    setCompare(50);
   }
   function removePhoto(viewId: ProjectViewId) {
     const view = viewsRef.current.find((item) => item.id === viewId);
@@ -507,6 +577,21 @@ export function ProjectVisualizer({
     if (view.concept?.image.startsWith("blob:")) URL.revokeObjectURL(view.concept.image);
     patchView(viewId, { photo: null, placement: [], concept: null, status: "", requestId: null, uploadProgress: 0, generating: false, stale: false });
     if (activeViewId === viewId) setActiveViewId("front");
+  }
+  function correctAngle(from: ProjectViewId, to: ProjectViewId) {
+    if (from === to) return;
+    setViews((current) => {
+      const source = current.find((view) => view.id === from)!, target = current.find((view) => view.id === to)!;
+      const content = (view: ProjectView) => ({ photo: view.photo, placement: view.placement, concept: view.concept, status: view.status, requestId: view.requestId, uploadProgress: view.uploadProgress, generating: view.generating, stale: view.stale });
+      return current.map((view) => view.id === from ? { ...view, ...content(target) } : view.id === to ? { ...view, ...content(source) } : view);
+    });
+    setActiveViewId(to);
+    setClassificationNotice("Angle labels updated.");
+  }
+  function continuePlacement() {
+    const workflow = (["front", "left", "right"] as ProjectViewId[]).filter((id) => viewsRef.current.some((view) => view.id === id && view.photo)),
+      next = workflow[workflow.indexOf(activeViewId) + 1];
+    if (next) setActiveViewId(next);
   }
   async function automaticMask(view: ProjectView = activeView) {
     const { photo, placement } = view;
@@ -1150,26 +1235,34 @@ export function ProjectVisualizer({
       </div>
       <div className="ai-workspace">
         <div className="ai-stage-shell">
-        <div className="view-tabs" role="tablist" aria-label="Uploaded project views">
+        {uploadedViews.length > 0 && <div className="view-tabs" role="tablist" aria-label="Uploaded project views">
           {views.filter((view) => view.photo).map((view) => (
             <button key={view.id} type="button" role="tab" aria-selected={activeViewId === view.id} onClick={() => setActiveViewId(view.id)}>
-              {view.label}{view.stale ? " · Update needed" : ""}
+              {view.label.replace(" View", "")}{view.stale ? " · Update needed" : ""}
             </button>
           ))}
-        </div>
-        <p className="active-view-label">Editing installation area: {activeView.label}</p>
-        <div className="ai-stage" ref={stageRef}>
-          {!photo ? (
-            <label className="ai-empty">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => choosePhoto(event.target.files?.[0])}
-              />
+          {uploadedViews.length < 3 && <label className="add-angle"><span>Add another angle</span><input type="file" multiple accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => choosePhotos(event.target.files || undefined)} /></label>}
+        </div>}
+        {uploadedViews.length > 0 && <p className="active-view-label">Editing installation area: {activeView.label} · Installation areas: {readyPlacementCount} of {uploadedViews.length} ready</p>}
+        <div className={`ai-stage${draggingUpload ? " upload-dragging" : ""}`} ref={stageRef}
+          onDragOver={(event) => { event.preventDefault(); setDraggingUpload(true); }}
+          onDragLeave={() => setDraggingUpload(false)}
+          onDrop={(event) => { event.preventDefault(); setDraggingUpload(false); void choosePhotos(event.dataTransfer.files); }}>
+          {uploadedViews.length === 0 ? (
+            <div className="ai-empty multi-upload-empty">
               <ImagePlus />
-              <strong>Upload the {activeView.label}</strong>
-              <span>Optimized privately in your browser</span>
-            </label>
+              <strong>Upload Your Project Views</strong>
+              <span>Select up to three photos showing different sides of the same installation area.</span>
+              <label className="choose-project-photos"><span>Choose Project Photos</span><input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => choosePhotos(event.target.files || undefined)}
+              /></label>
+              <label className="camera-project-photo"><span>Take a photo</span><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => choosePhotos(event.target.files || undefined)} /></label>
+              <small>Front and side photos work best. JPG, PNG or WebP · maximum 10 MB each.</small>
+              <small>Photos are optimized in your browser and securely processed to organize your project views.</small>
+            </div>
           ) : (
             <div
               className="contained-media"
@@ -1275,7 +1368,17 @@ export function ProjectVisualizer({
               </span>
             </div>
           )}
+          {classifyingViews && <div className="generation-overlay" aria-live="polite"><Sparkles /><strong>Organizing your project views…</strong></div>}
         </div>
+        {uploadedViews.length > 0 && <div className="angle-classification" role="status" aria-live="polite">
+          {classificationNotice && <span>{classificationNotice}</span>}
+          <button type="button" onClick={() => setCorrectingAngles((value) => !value)}>Correct Angles</button>
+          <label className="replace-angle"><span>Replace active photo</span><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => choosePhotos(event.target.files || undefined, activeViewId)} /></label>
+          {uploadedViews.length > 1 && !activeView.required && <button type="button" onClick={() => removePhoto(activeViewId)}>Remove active photo</button>}
+          {correctingAngles && <div className="angle-corrections">
+            {uploadedViews.map((view) => <label key={view.photo!.uploadId}>{view.photo!.file.name}<select value={view.id} onChange={(event) => correctAngle(view.id, event.target.value as ProjectViewId)}><option value="left">Left</option><option value="front">Front</option><option value="right">Right</option></select></label>)}
+          </div>}
+        </div>}
         </div>
         <aside className="ai-panel">
           <div className="ai-step">
@@ -1288,16 +1391,6 @@ export function ProjectVisualizer({
               </small>
             </div>
           </div>
-          <div className="multi-view-upload-cards">
-            {views.map((view) => (
-              <article className={`view-upload-card${view.photo ? " uploaded" : ""}`} key={view.id}>
-                {view.photo && <img src={view.photo.url} alt={`${view.label} thumbnail`} />}
-                <div><strong>{view.label} — {view.required ? "Required" : "Optional"}</strong><small>{view.photo ? `${view.photo.file.name} · orientation normalized` : "JPG, PNG or WebP"}</small></div>
-                <label><span>{view.photo ? "Replace" : "Upload"} {view.label}</span><input type="file" aria-label={`${view.photo ? "Replace" : "Upload"} ${view.label}`} accept="image/jpeg,image/png,image/webp" onChange={(event) => choosePhoto(event.target.files?.[0], view.id)} /></label>
-                {!view.required && view.photo && <button type="button" onClick={() => removePhoto(view.id)}>Remove</button>}
-              </article>
-            ))}
-          </div>
           <div className="placement-help">
             <small>
               Click or tap four corners around the intended installation area.
@@ -1308,6 +1401,7 @@ export function ProjectVisualizer({
                 Reset area
               </button>
             )}
+            {isPlacementReady(placement) && (["front", "left", "right"] as ProjectViewId[]).filter((id) => views.some((view) => view.id === id && view.photo)).indexOf(activeViewId) < uploadedViews.length - 1 && <button type="button" onClick={continuePlacement}>Continue to next angle</button>}
           </div>
           <div className="ai-step">
             <span>02</span>
