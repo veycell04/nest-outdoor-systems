@@ -14,6 +14,9 @@ const systems = products;
 const projects = [
   {
     image: "/projects/elevated-bioclimatic-double.png",
+    displayImage: "/projects/elevated-bioclimatic-double.webp",
+    width: 1536,
+    height: 1024,
     title: "Louvered Pergola — Double Retracting",
     type: "Concept Visualization",
     system: "bioclimatic_double",
@@ -21,6 +24,9 @@ const projects = [
   },
   {
     image: "/projects/elevated-rolling-roof.png",
+    displayImage: "/projects/elevated-rolling-roof.webp",
+    width: 1536,
+    height: 1024,
     title: "Louvered Pergola — Retracting Roof",
     type: "Concept Visualization",
     system: "rolling_roof",
@@ -28,6 +34,9 @@ const projects = [
   },
   {
     image: "/projects/elevated-tilt-system.png",
+    displayImage: "/projects/elevated-tilt-system.webp",
+    width: 1536,
+    height: 1024,
     title: "Louvered Pergola — Tilting Louvers",
     type: "Concept Visualization",
     system: "tilt",
@@ -35,12 +44,18 @@ const projects = [
   },
   {
     image: "/projects/elevated-pergola.jpeg",
+    displayImage: "/projects/elevated-pergola.webp",
+    width: 1200,
+    height: 1600,
     title: "Classic PVC Pergola",
     type: "Retractable Roof",
     system: "pvc",
   },
   {
     image: "/projects/elevated-flat-pergola.png",
+    displayImage: "/projects/elevated-flat-pergola.webp",
+    width: 1536,
+    height: 1024,
     title: "Flat Pergola — Premium",
     type: "Concept Visualization",
     system: "flat",
@@ -48,30 +63,45 @@ const projects = [
   },
   {
     image: "/projects/elevated-glass-veranda.jpeg",
+    displayImage: "/projects/elevated-glass-veranda.webp",
+    width: 819,
+    height: 1024,
     title: "Glass Veranda",
     type: "Glass Roof",
     system: "glass",
   },
   {
     image: "/projects/elevated-guillotine-glass.jpeg",
+    displayImage: "/projects/elevated-guillotine-glass.webp",
+    width: 900,
+    height: 562,
     title: "Guillotine Glass",
     type: "Motorized Glass",
     system: "guillotine",
   },
   {
     image: "/projects/elevated-solidroll.jpg",
+    displayImage: "/projects/elevated-solidroll.webp",
+    width: 928,
+    height: 1664,
     title: "Solidroll",
     type: "Product Photograph",
     system: "solidroll",
   },
   {
     image: "/projects/elevated-zip-screen.jpeg",
+    displayImage: "/projects/elevated-zip-screen.webp",
+    width: 960,
+    height: 720,
     title: "Vertical ZIP Screen",
     type: "Motorized Screen",
     system: "zip",
   },
   {
     image: "/projects/elevated-ceiling-zip.png",
+    displayImage: "/projects/elevated-ceiling-zip.webp",
+    width: 1536,
+    height: 1024,
     title: "Ceiling ZIP Screen",
     type: "Concept Visualization",
     system: "ceiling_zip",
@@ -79,6 +109,9 @@ const projects = [
   },
   {
     image: "/projects/elevated-sliding-glass.png",
+    displayImage: "/projects/elevated-sliding-glass.webp",
+    width: 1536,
+    height: 1024,
     title: "Sliding Glass",
     type: "Concept Visualization",
     system: "sliding_glass",
@@ -86,12 +119,18 @@ const projects = [
   },
   {
     image: "/projects/elevated-cassette-awning.jpeg",
+    displayImage: "/projects/elevated-cassette-awning.webp",
+    width: 1200,
+    height: 1600,
     title: "Cassette Awning",
     type: "Retractable Awning",
     system: "awning",
   },
   {
     image: "/projects/elevated-wintent.png",
+    displayImage: "/projects/elevated-wintent.webp",
+    width: 2010,
+    height: 782,
     title: "Wintent Window Awning",
     type: "Concept Visualization",
     system: "wintent",
@@ -99,6 +138,9 @@ const projects = [
   },
   {
     image: "/projects/elevated-umbrella.jpeg",
+    displayImage: "/projects/elevated-umbrella.webp",
+    width: 1440,
+    height: 1080,
     title: "Square Garden Umbrella",
     type: "Architectural Shade",
     system: "umbrella",
@@ -172,7 +214,9 @@ export default function Home() {
       <header className="nav-shell">
         <a className="brand" href="#top" aria-label="NEST Outdoor Systems home">
           <img
-            src="/brand/nest-outdoor-systems-final.png"
+            src="/brand/nest-outdoor-systems-final.webp"
+            width={900}
+            height={300}
             alt="NEST Outdoor Systems"
           />
         </a>
@@ -351,7 +395,7 @@ export default function Home() {
               playsInline
               controls
               preload="metadata"
-              poster="/projects/elevated-wintent.png"
+              poster="/projects/elevated-wintent.webp"
               aria-label="Wintent Window Awning in operation"
             >
               <source src="/media/nest-wintent-showcase.mp4" type="video/mp4" />
@@ -397,13 +441,16 @@ export default function Home() {
               aria-label={`Visualize a ${project.title} project`}
             >
               <img
-                src={project.image}
+                src={project.displayImage}
+                width={project.width}
+                height={project.height}
                 alt={
                   project.concept
                     ? `Concept visualization of ${project.title}`
                     : `Completed ${project.title} project`
                 }
                 loading={index > 1 ? "lazy" : "eager"}
+                decoding="async"
               />
               <span className="project-caption">
                 <span>{project.type}</span>
@@ -575,7 +622,9 @@ export default function Home() {
             aria-label="NEST Outdoor Systems home"
           >
             <img
-              src="/brand/nest-outdoor-systems-final.png"
+              src="/brand/nest-outdoor-systems-final.webp"
+              width={900}
+              height={300}
               alt="NEST Outdoor Systems"
             />
           </a>
@@ -583,6 +632,11 @@ export default function Home() {
             Serving residential and commercial projects across Chicagoland and
             Greater Nashville
           </p>
+          <nav className="footer-legal" aria-label="Legal information">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/cookie-policy">Cookies</a>
+          </nav>
           <p>© 2026 NEST Outdoor Systems</p>
         </div>
       </footer>

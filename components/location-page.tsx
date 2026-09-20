@@ -100,7 +100,9 @@ export function LocationPage({
       <header className="location-nav">
         <a className="brand" href="/" aria-label="NEST Outdoor Systems home">
           <img
-            src="/brand/nest-outdoor-systems-final.png"
+            src="/brand/nest-outdoor-systems-final.webp"
+            width={900}
+            height={300}
             alt="NEST Outdoor Systems"
           />
         </a>
@@ -248,6 +250,11 @@ export function LocationPage({
       <footer className="location-footer">
         <a href="/">NEST Outdoor Systems</a>
         <span>Chicago · Nashville</span>
+        <nav aria-label="Legal information">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/cookie-policy">Cookies</a>
+        </nav>
         <span>© 2026 NEST Outdoor Systems</span>
       </footer>
     </main>

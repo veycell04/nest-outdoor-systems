@@ -230,6 +230,15 @@ export function getProduct(id: string) {
   return products.find((product) => product.id === id);
 }
 
+/**
+ * Product references stay at their original resolution for AI generation.
+ * The browser uses lightweight WebP copies so choosing products does not
+ * download multi-megabyte source files.
+ */
+export function getProductDisplayImage(product: ProductDefinition) {
+  return product.referenceImages[0].replace(/\.(?:png|jpe?g)$/i, ".webp");
+}
+
 export function isGeneratedResultUrl(
   generatedResultUrl: string,
   productReferenceUrls: string[],

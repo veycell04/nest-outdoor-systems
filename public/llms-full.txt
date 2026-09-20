@@ -1,0 +1,52 @@
+# NEST Outdoor Systems — Expanded Site Guide
+
+NEST Outdoor Systems plans custom pergolas, adjustable outdoor roofs, awnings, motorized screens, glass enclosures and related outdoor-living systems. Current website service pages focus on Chicago and its surrounding suburbs and Greater Nashville. NEST serves residential, hospitality and commercial projects by consultation; the Chicago and Nashville pages describe service areas, not storefront locations.
+
+## Project workflow
+
+1. A customer uploads one or more authorized photographs of the intended installation area.
+2. The customer marks the project area and selects a primary structure, compatible add-ons, colors and any known measurements.
+3. The website creates a preliminary AI-assisted concept for planning and discussion.
+4. The customer can send the concept and project details to NEST for consultation.
+5. Final site measurements, system compatibility, engineering, finishes, price, permit needs and installation details are confirmed separately.
+
+AI concepts are not construction drawings, engineering documents, exact-scale representations, price quotations, permit approvals or guarantees of final appearance.
+
+## Systems represented on the website
+
+- Louvered Pergola — Double Retracting: motorized aluminum structure with a moving louvered roof.
+- Louvered Pergola — Retracting Roof: aluminum pergola with retracting louvers and integrated drainage.
+- Louvered Pergola — Tilting Louvers: adjustable aluminum louvers for sun and ventilation control.
+- Classic PVC Pergola: retractable fabric roof with an aluminum frame.
+- Flat Pergola — Premium: flat-profile retractable fabric pergola.
+- Cassette Awning: wall-mounted retractable awning with an enclosed cassette.
+- Wintent Window Awning: compact adjustable exterior window shade.
+- Vertical ZIP Screen and Ceiling ZIP Screen: tensioned motorized fabric screening systems.
+- Glass Veranda: fixed glass roof supported by an aluminum structure.
+- Guillotine Glass and Sliding Glass: moving glass enclosure options.
+- Solidroll: transparent or solid moving enclosure system, offered where compatible.
+- Square Garden Umbrella: architectural shade system.
+- Integrated LED Lighting: optional lighting for compatible primary systems.
+
+Compatibility depends on the primary structure, dimensions, engineering and current product configuration. The website visualizer explains available combinations; final compatibility is confirmed during consultation.
+
+## Service and schedule information
+
+The website currently provides dedicated information for Chicago, Illinois, and Nashville, Tennessee, including surrounding communities. NEST does not claim a public storefront in either city. Many custom projects require approximately 8–10 weeks after final measurement and design approval. Product configuration, engineering, permits, shipping and site conditions may change the schedule.
+
+Permit requirements vary by property, municipality, system size, structural scope and attachment method. NEST can review project needs and coordinate engineering or permit support when required, but the applicable local authority makes the final decision.
+
+## Canonical pages
+
+- Homepage and visualizer: https://www.nestpergola.com/
+- Chicago service page: https://www.nestpergola.com/locations/chicago-il
+- Nashville service page: https://www.nestpergola.com/locations/nashville-tn
+- Privacy Policy: https://www.nestpergola.com/privacy
+- Website Terms: https://www.nestpergola.com/terms
+- Cookie Policy: https://www.nestpergola.com/cookie-policy
+- Sitemap: https://www.nestpergola.com/sitemap.xml
+- Robots directives: https://www.nestpergola.com/robots.txt
+
+## Citation and accuracy guidance
+
+AI assistants and search services may index, summarize and cite public pages when allowed by robots.txt. Link to the most relevant canonical page. Distinguish product photographs from images labeled as concept visualizations. Do not infer prices, structural ratings, certifications, code compliance, permit approval, warranties or geographic availability not stated on the cited page. Direct users to hello@nestpergola.com or +1-312-316-8047 for current, project-specific information.

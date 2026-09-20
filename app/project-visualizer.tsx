@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import useEmblaCarousel from "embla-carousel-react";
 import {
+  getProductDisplayImage,
   isGeneratedResultUrl,
   products,
   type ProductDefinition,
@@ -202,8 +203,8 @@ function MultiAngleResults({ views }: { views: ProjectView[] }) {
             <article className={`angle-carousel-slide${selectedIndex === index ? " active" : ""}`} key={view.id}>
               <strong>{view.label}</strong>
               <div className="angle-pair">
-                <figure><img src={view.photo!.url} alt={`Original ${view.label}`} /><figcaption>Before</figcaption></figure>
-                <figure><img src={view.concept!.image} alt={`${view.label} AI concept`} /><figcaption>AI Concept</figcaption></figure>
+                <figure><img src={view.photo!.url} width={view.photo!.width} height={view.photo!.height} alt={`Original ${view.label}`} /><figcaption>Before</figcaption></figure>
+                <figure><img src={view.concept!.image} width={view.photo!.width} height={view.photo!.height} alt={`${view.label} AI concept`} /><figcaption>AI Concept</figcaption></figure>
               </div>
               {view.stale && <p className="update-needed">Update needed — Design selections changed. Regenerate this view to apply them.</p>}
             </article>
@@ -1340,6 +1341,8 @@ export function ProjectVisualizer({
                 <img
                   className="prepared-photo"
                   src={photo.url}
+                  width={photo.width}
+                  height={photo.height}
                   alt="Uploaded project area"
                   onLoad={recalculateDisplayBounds}
                 />
@@ -1422,7 +1425,14 @@ export function ProjectVisualizer({
                   className={`design-product-card ${primaryId === id ? "selected" : ""}`}
                   onClick={() => choosePrimary(id)}
                 >
-                  <img src={product.referenceImages[0]} alt="" />
+                  <img
+                    src={getProductDisplayImage(product)}
+                    width={480}
+                    height={320}
+                    loading="lazy"
+                    decoding="async"
+                    alt=""
+                  />
                   <span>{primaryLabels[id]}</span>
                   {primaryId === id && <strong aria-hidden="true">✓</strong>}
                 </button>
@@ -1457,7 +1467,16 @@ export function ProjectVisualizer({
                   title={reason}
                   onClick={() => chooseAddOn(id)}
                 >
-                  {product?.referenceImages[0] && <img src={product.referenceImages[0]} alt="" />}
+                  {product?.referenceImages[0] && (
+                    <img
+                      src={getProductDisplayImage(product)}
+                      width={480}
+                      height={320}
+                      loading="lazy"
+                      decoding="async"
+                      alt=""
+                    />
+                  )}
                   <span>{addOnLabels[id]}</span>
                   {active && <strong aria-hidden="true">✓</strong>}
                 </button>

@@ -55,6 +55,13 @@ export default function RootLayout({
   return (
     <html lang="en-US">
       <head>
+        <link
+          rel="preload"
+          href="/pergola-hero.webp"
+          as="image"
+          type="image/webp"
+          fetchPriority="high"
+        />
         <script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
@@ -71,15 +78,45 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "NEST Outdoor Systems",
-              url: siteUrl,
-              logo: `${siteUrl}/brand/nest-outdoor-systems-final.png`,
-              email: "hello@nestpergola.com",
-              telephone: "+1-312-316-8047",
-              areaServed: [
-                { "@type": "City", name: "Chicago", addressRegion: "IL" },
-                { "@type": "City", name: "Nashville", addressRegion: "TN" },
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": `${siteUrl}/#organization`,
+                  name: "NEST Outdoor Systems",
+                  url: siteUrl,
+                  logo: {
+                    "@type": "ImageObject",
+                    url: `${siteUrl}/brand/nest-outdoor-systems-final.png`,
+                    width: 2172,
+                    height: 724,
+                  },
+                  email: "hello@nestpergola.com",
+                  telephone: "+1-312-316-8047",
+                  areaServed: [
+                    { "@type": "City", name: "Chicago", addressRegion: "IL", addressCountry: "US" },
+                    { "@type": "City", name: "Nashville", addressRegion: "TN", addressCountry: "US" },
+                  ],
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${siteUrl}/#website`,
+                  url: siteUrl,
+                  name: "NEST Outdoor Systems",
+                  publisher: { "@id": `${siteUrl}/#organization` },
+                  inLanguage: "en-US",
+                },
+                {
+                  "@type": "Service",
+                  "@id": `${siteUrl}/#outdoor-systems`,
+                  name: "Custom pergola and outdoor-system planning and installation",
+                  provider: { "@id": `${siteUrl}/#organization` },
+                  url: siteUrl,
+                  serviceType: "Pergola design and outdoor enclosure installation",
+                  areaServed: [
+                    { "@type": "City", name: "Chicago", addressRegion: "IL", addressCountry: "US" },
+                    { "@type": "City", name: "Nashville", addressRegion: "TN", addressCountry: "US" },
+                  ],
+                },
               ],
             }),
           }}

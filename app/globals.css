@@ -349,7 +349,7 @@ select {
 .hero-image {
   position: absolute;
   inset: 0;
-  background: url("/pergola-hero.png") center/cover no-repeat;
+  background: url("/pergola-hero.webp") center/cover no-repeat;
   transform: scale(1.01);
 }
 .hero-shade {
@@ -1092,8 +1092,21 @@ footer h2 {
   border-top: 1px solid #ffffff2b;
   padding-top: 2rem;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr auto auto;
   align-items: end;
+}
+.footer-legal,
+.location-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  font-size: 0.72rem;
+}
+.footer-legal a,
+.location-footer nav a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
 }
 .footer-line p {
   font-size: 0.74rem;
@@ -2107,7 +2120,7 @@ button:disabled {
   inset: 0;
 }
 .location-hero-image {
-  background: url('/pergola-hero.png') center/cover no-repeat;
+  background: url('/pergola-hero.webp') center/cover no-repeat;
   transform: scale(1.015);
 }
 .location-hero-shade {
@@ -2231,6 +2244,46 @@ button:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.legal-page {
+  min-height: 100vh;
+  background: #f3f0e9;
+  color: var(--ink);
+}
+.legal-nav,
+.legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem clamp(1.5rem, 7vw, 7rem);
+  background: #101715;
+  color: white;
+}
+.legal-page article {
+  width: min(820px, calc(100% - 3rem));
+  margin: 0 auto;
+  padding: clamp(4rem, 9vw, 8rem) 0;
+}
+.legal-page h1 {
+  margin: 1rem 0 0.6rem;
+  font: 400 clamp(3rem, 7vw, 5.8rem)/0.95 Georgia, serif;
+  letter-spacing: -0.04em;
+}
+.legal-page h2 {
+  margin: 2.4rem 0 0.7rem;
+  font: 400 clamp(1.45rem, 3vw, 2rem)/1.2 Georgia, serif;
+}
+.legal-page article p {
+  max-width: 760px;
+  color: #4f5753;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.legal-page article a { text-decoration: underline; }
+.legal-updated { font-size: 0.82rem !important; }
+.legal-footer { justify-content: flex-start; }
+.legal-footer a { text-decoration: underline; text-underline-offset: 0.25rem; }
 
 @media (max-width: 900px) {
   .home-locations,

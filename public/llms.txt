@@ -17,6 +17,10 @@ Contact NEST Outdoor Systems at hello@nestpergola.com or +1-312-316-8047 for cur
 - [Chicago service area](https://www.nestpergola.com/locations/chicago-il): Custom pergolas and outdoor systems for Chicago and surrounding Illinois suburbs, including climate, service, timeline, and permit FAQs.
 - [Nashville service area](https://www.nestpergola.com/locations/nashville-tn): Custom pergolas and outdoor systems for Nashville and surrounding Tennessee communities, including climate, service, timeline, and permit FAQs.
 - [Project consultation](https://www.nestpergola.com/#contact): Contact form for residential and commercial project inquiries, photographs, measurements, and visualizer details.
+- [Privacy Policy](https://www.nestpergola.com/privacy): How project, contact, upload, analytics, and technical information is handled.
+- [Website Terms](https://www.nestpergola.com/terms): Conditions for using the website, visualizer, uploads, and preliminary concepts.
+- [Cookie Policy](https://www.nestpergola.com/cookie-policy): Browser storage, essential technology, and analytics information.
+- [Expanded AI site guide](https://www.nestpergola.com/llms-full.txt): Detailed products, workflow, service, schedule, and accuracy guidance.
 
 ## AI Usage Guidelines
 
