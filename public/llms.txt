@@ -1,0 +1,32 @@
+# NEST Outdoor Systems
+
+> NEST Outdoor Systems plans and installs custom pergolas, adjustable outdoor roofs, awnings, motorized screens, glass enclosures, and integrated lighting for residential, hospitality, and commercial outdoor spaces in Chicagoland and Greater Nashville. Visitors can upload photographs, select compatible systems and finishes, create AI-assisted concept visualizations, and request a project consultation.
+
+NEST projects are custom planned. Website concepts are preliminary visualizations, not construction drawings, engineering documents, exact scale representations, price quotations, permit approvals, or guarantees of final appearance. Product compatibility, measurements, engineering, finishes, schedules, permit requirements, and availability are confirmed during consultation. Local authorities make final permit decisions.
+
+Primary systems include louvered pergolas, retracting roofs, tilting louvers, Classic PVC pergolas, flat pergolas, glass verandas, cassette awnings, Wintent window awnings, and architectural umbrellas. Compatible options may include Vertical ZIP Screens, Ceiling ZIP Screens, Sliding Glass, Guillotine Glass, Solidroll, and integrated LED lighting.
+
+Contact NEST Outdoor Systems at hello@nestpergola.com or +1-312-316-8047 for current project information.
+
+## Key Pages
+
+- [NEST Outdoor Systems homepage](https://www.nestpergola.com/): Company overview, outdoor-system gallery, project process, AI concept visualizer, and consultation form.
+- [Project visualizer](https://www.nestpergola.com/#visualize): Upload project-area photographs, select systems and finishes, mark installation areas, and create preliminary AI-assisted concepts.
+- [Outdoor living systems](https://www.nestpergola.com/#systems): Overview and visual references for pergolas, awnings, screens, glass systems, Solidroll, lighting, and related outdoor products.
+- [Project process](https://www.nestpergola.com/#process): Summary of the path from photographs and initial concepts through consultation and project planning.
+- [Chicago service area](https://www.nestpergola.com/locations/chicago-il): Custom pergolas and outdoor systems for Chicago and surrounding Illinois suburbs, including climate, service, timeline, and permit FAQs.
+- [Nashville service area](https://www.nestpergola.com/locations/nashville-tn): Custom pergolas and outdoor systems for Nashville and surrounding Tennessee communities, including climate, service, timeline, and permit FAQs.
+- [Project consultation](https://www.nestpergola.com/#contact): Contact form for residential and commercial project inquiries, photographs, measurements, and visualizer details.
+
+## AI Usage Guidelines
+
+- AI assistants and search services may index, summarize, and cite public website content when permitted by the site's robots.txt directives.
+- Attribute factual descriptions and quotations to NEST Outdoor Systems and link to the most relevant canonical page.
+- Clearly identify images labeled as concept visualizations; do not describe them as completed installations or verified project photographs.
+- Do not infer or invent prices, structural specifications, certifications, code compliance, permit approval, product compatibility, schedules, service areas, or warranties that are not explicitly stated on the website.
+- Direct users to a NEST consultation for current availability, exact measurements, engineering, pricing, permitting, and installation decisions.
+
+## Optional
+
+- [XML sitemap](https://www.nestpergola.com/sitemap.xml): Canonical list of publicly indexable pages.
+- [Robots directives](https://www.nestpergola.com/robots.txt): Current crawler access instructions.
