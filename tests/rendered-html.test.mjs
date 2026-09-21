@@ -46,11 +46,11 @@ test("renders only the approved customer-facing louvered product names", async (
   assert.match(html, /Louvered Pergola — Retracting Roof/);
   assert.match(html, /Louvered Pergola — Tilting Louvers/);
   assert.match(html, /Wintent Window Awning/);
-  assert.match(html, /\/projects\/elevated-wintent\.png/);
+  assert.match(html, /\/projects\/elevated-wintent\.webp/);
   assert.match(html, /\/media\/nest-wintent-showcase\.mp4/);
   assert.match(html, /Guillotine Glass/);
   assert.match(html, /Solidroll/);
-  assert.match(html, /elevated-solidroll\.jpg/);
+  assert.match(html, /elevated-solidroll\.webp/);
   assert.doesNotMatch(html, /02 · Integrated lighting/i);
   assert.doesNotMatch(
     html,

@@ -2,9 +2,60 @@ import type { Metadata } from "next";
 import { AnalyticsClickTracker } from "../components/analytics-click-tracker";
 import { ClientErrorBoundary } from "../components/client-error-boundary";
 import { GA_MEASUREMENT_ID } from "../lib/analytics";
+import { homeFaqs } from "../lib/site-content";
 import "./globals.css";
 
 const siteUrl = "https://www.nestpergola.com";
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${siteUrl}/#organization`,
+    name: "NEST Outdoor Systems",
+    url: siteUrl,
+    logo: {
+      "@type": "ImageObject",
+      url: `${siteUrl}/brand/nest-outdoor-systems-final.png`,
+      width: 2172,
+      height: 724,
+    },
+    email: "hello@nestpergola.com",
+    telephone: "+1-312-316-8047",
+    areaServed: ["Chicago, Illinois", "Nashville, Tennessee"],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteUrl}/#website`,
+    url: siteUrl,
+    name: "NEST Outdoor Systems",
+    publisher: { "@id": `${siteUrl}/#organization` },
+    inLanguage: "en-US",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "@id": `${siteUrl}/#outdoor-systems`,
+    name: "Custom pergola and outdoor-system planning and installation",
+    provider: { "@id": `${siteUrl}/#organization` },
+    url: siteUrl,
+    serviceType: "Pergola design and outdoor enclosure installation",
+    areaServed: ["Chicago, Illinois", "Nashville, Tennessee"],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${siteUrl}/#faq`,
+    mainEntity: homeFaqs.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })),
+  },
+] as const;
+
+const serializeJsonLd = (value: unknown) =>
+  JSON.stringify(value).replace(/</g, "\\u003c");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -73,54 +124,13 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@graph": [
-                {
-                  "@type": "Organization",
-                  "@id": `${siteUrl}/#organization`,
-                  name: "NEST Outdoor Systems",
-                  url: siteUrl,
-                  logo: {
-                    "@type": "ImageObject",
-                    url: `${siteUrl}/brand/nest-outdoor-systems-final.png`,
-                    width: 2172,
-                    height: 724,
-                  },
-                  email: "hello@nestpergola.com",
-                  telephone: "+1-312-316-8047",
-                  areaServed: [
-                    { "@type": "City", name: "Chicago", addressRegion: "IL", addressCountry: "US" },
-                    { "@type": "City", name: "Nashville", addressRegion: "TN", addressCountry: "US" },
-                  ],
-                },
-                {
-                  "@type": "WebSite",
-                  "@id": `${siteUrl}/#website`,
-                  url: siteUrl,
-                  name: "NEST Outdoor Systems",
-                  publisher: { "@id": `${siteUrl}/#organization` },
-                  inLanguage: "en-US",
-                },
-                {
-                  "@type": "Service",
-                  "@id": `${siteUrl}/#outdoor-systems`,
-                  name: "Custom pergola and outdoor-system planning and installation",
-                  provider: { "@id": `${siteUrl}/#organization` },
-                  url: siteUrl,
-                  serviceType: "Pergola design and outdoor enclosure installation",
-                  areaServed: [
-                    { "@type": "City", name: "Chicago", addressRegion: "IL", addressCountry: "US" },
-                    { "@type": "City", name: "Nashville", addressRegion: "TN", addressCountry: "US" },
-                  ],
-                },
-              ],
-            }),
-          }}
-        />
+        {structuredData.map((schema) => (
+          <script
+            key={schema["@id"]}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
+          />
+        ))}
         <AnalyticsClickTracker />
         <ClientErrorBoundary>{children}</ClientErrorBoundary>
       </body>

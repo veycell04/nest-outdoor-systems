@@ -2,12 +2,24 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { ArrowRight, ImagePlus, Menu, Ruler, Sparkles, X } from "lucide-react";
-import {
-  ProjectVisualizer,
-  type VisualizerHandoff,
-} from "./project-visualizer";
+import dynamic from "next/dynamic";
+import type { VisualizerHandoff } from "./project-visualizer";
 import { trackEvent } from "../lib/analytics";
 import { products } from "../lib/products";
+import { homeFaqs } from "../lib/site-content";
+
+const ProjectVisualizer = dynamic(
+  () => import("./project-visualizer").then((module) => module.ProjectVisualizer),
+  {
+    ssr: false,
+    loading: () => (
+      <section id="visualize" className="visualizer-section section visualizer-loading" aria-busy="true">
+        <p className="eyebrow"><span /> AI Photo Visualizer</p>
+        <h2>Preparing your project visualizer…</h2>
+      </section>
+    ),
+  },
+);
 
 const systems = products;
 
@@ -265,8 +277,8 @@ export default function Home() {
             <em>opens to the sky.</em>
           </h1>
           <p className="hero-copy">
-            Custom pergolas and outdoor enclosure systems, engineered around
-            your home and the way you want to live.
+            We design custom pergolas and outdoor systems for your home, patio
+            or business.
           </p>
           <div className="hero-actions">
             <a className="button light" href="#visualize">
@@ -306,9 +318,8 @@ export default function Home() {
             <em>One outdoor life.</em>
           </h2>
           <p>
-            See the details that transform an open terrace into a finished
-            outdoor room: motorized louvers, integrated lighting and glass
-            enclosures.
+            See how a roof, lights, screens and glass can turn an open patio
+            into a useful outdoor room.
           </p>
           <div className="showcase-actions">
             <a className="button light" href="#visualize">
@@ -422,8 +433,8 @@ export default function Home() {
             </h2>
           </div>
           <p>
-            Explore every system we produce. Images marked “Concept
-            Visualization” are design concepts, not completed customer projects.
+            Browse each system we offer. Images marked “Concept Visualization”
+            show a design idea. They are not finished customer projects.
           </p>
         </div>
         <div className="project-gallery">
@@ -449,8 +460,9 @@ export default function Home() {
                     ? `Concept visualization of ${project.title}`
                     : `Completed ${project.title} project`
                 }
-                loading={index > 1 ? "lazy" : "eager"}
+                loading="lazy"
                 decoding="async"
+                fetchPriority="low"
               />
               <span className="project-caption">
                 <span>{project.type}</span>
@@ -479,8 +491,8 @@ export default function Home() {
             <ImagePlus />
             <h3>Share your space</h3>
             <p>
-              Add a photo, approximate dimensions, or simply your contact
-              details.
+              Add a photo and a rough size. You can also start with just your
+              contact details.
             </p>
           </article>
           <article>
@@ -494,8 +506,8 @@ export default function Home() {
             <Sparkles />
             <h3>Generate and refine</h3>
             <p>
-              Create an AI design concept, then send the specifications to our
-              team for site measurement and engineering.
+              Create an AI concept. Then send it to our team for a site check
+              and final plans.
             </p>
           </article>
         </div>
@@ -503,9 +515,8 @@ export default function Home() {
           <p>Permit support</p>
           <strong>Requirements vary by location and system.</strong>
           <span>
-            We review permit needs during project planning and can coordinate
-            engineering drawings and permit support when required. Local permit
-            fees are confirmed after address review.
+            We check permit needs as we plan the job. We can help with drawings
+            and permit support. We confirm local fees after we review the address.
           </span>
         </aside>
       </section>
@@ -535,6 +546,19 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="home-faq section" aria-labelledby="home-faq-title">
+        <p className="eyebrow dark"><span /> Helpful answers</p>
+        <h2 id="home-faq-title">Common project questions.</h2>
+        <div>
+          {homeFaqs.map(({ question, answer }) => (
+            <details key={question}>
+              <summary>{question}</summary>
+              <p>{answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <footer id="contact">
         <div className="contact-intro">
           <p className="eyebrow">
@@ -546,8 +570,8 @@ export default function Home() {
             <em>for the outdoors.</em>
           </h2>
           <p>
-            No photo or measurements yet? That is completely fine. Share your
-            contact information and we will guide you through the next step.
+            No photo or size yet? You can still start. Share your contact details
+            and we will guide you through the next step.
           </p>
           <a className="contact-email" href="mailto:hello@nestpergola.com">
             hello@nestpergola.com <ArrowRight size={16} />

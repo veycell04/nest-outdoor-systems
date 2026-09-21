@@ -46,12 +46,7 @@ export function LocationPage({
         url: "https://www.nestpergola.com",
         telephone: "+1-312-316-8047",
       },
-      areaServed: {
-        "@type": "City",
-        name: city,
-        addressRegion: region,
-        addressCountry: "US",
-      },
+      areaServed: `${city}, ${region}, United States`,
       hasOfferCatalog: {
         "@type": "OfferCatalog",
         name: "Outdoor systems",
@@ -92,10 +87,15 @@ export function LocationPage({
 
   return (
     <main className="location-page">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
+      {schema.map((entry) => (
+        <script
+          key={entry["@type"]}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(entry).replace(/</g, "\\u003c"),
+          }}
+        />
+      ))}
 
       <header className="location-nav">
         <a className="brand" href="/" aria-label="NEST Outdoor Systems home">

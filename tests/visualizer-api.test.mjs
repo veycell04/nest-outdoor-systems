@@ -864,7 +864,7 @@ test("concept references are labeled separately in the website gallery", async (
       ),
     );
   }
-  assert.match(page, /design concepts, not completed customer projects/);
+  assert.match(page, /show a design idea\. They are not finished customer projects/);
   assert.match(page, /Concept visualization of/);
 });
 

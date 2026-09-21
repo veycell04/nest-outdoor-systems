@@ -8,6 +8,12 @@
   background: #101715;
   color: white;
 }
+.visualizer-loading {
+  min-height: 520px;
+}
+.visualizer-loading h2 {
+  max-width: 760px;
+}
 .visualizer-heading {
   display: grid;
   grid-template-columns: 1.7fr 1fr;
@@ -2243,6 +2249,33 @@ button:disabled {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.home-faq {
+  background: #eeeae1;
+}
+.home-faq > h2 {
+  max-width: 760px;
+  color: var(--ink);
+}
+.home-faq > div {
+  max-width: 960px;
+  margin-top: 3rem;
+  border-top: 1px solid var(--line);
+}
+.home-faq details {
+  border-bottom: 1px solid var(--line);
+}
+.home-faq summary {
+  padding: 1.4rem 0;
+  cursor: pointer;
+  font: 400 clamp(1.05rem, 2vw, 1.45rem)/1.3 Georgia, serif;
+}
+.home-faq details p {
+  max-width: 760px;
+  margin: 0 0 1.4rem;
+  color: #555d59;
+  line-height: 1.7;
 }
 
 .legal-page {
