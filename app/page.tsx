@@ -245,6 +245,9 @@ export default function Home() {
           <a href="#process" onClick={() => setMenu(false)}>
             Process
           </a>
+          <a href="/about" onClick={() => setMenu(false)}>
+            About &amp; team
+          </a>
           <a href="#locations" onClick={() => setMenu(false)}>
             Locations
           </a>
@@ -653,15 +656,19 @@ export default function Home() {
             />
           </a>
           <p>
-            Serving residential and commercial projects across Chicagoland and
-            Greater Nashville
+            <a href="/about">About &amp; team</a>
+            <br />
+            <a href="tel:+13123168047">(312) 316-8047</a>
           </p>
           <nav className="footer-legal" aria-label="Legal information">
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
             <a href="/cookie-policy">Cookies</a>
           </nav>
-          <p>© 2026 NEST Outdoor Systems</p>
+          <p>
+            Serving Chicagoland and Greater Nashville by appointment
+            <br />© 2026 NEST Outdoor Systems
+          </p>
         </div>
       </footer>
     </main>

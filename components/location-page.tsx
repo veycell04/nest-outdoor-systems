@@ -107,6 +107,7 @@ export function LocationPage({
           />
         </a>
         <div>
+          <a href="/about">About</a>
           <a href="/locations/chicago-il">Chicago</a>
           <a href="/locations/nashville-tn">Nashville</a>
           <a className="button light" href="/#contact">
@@ -249,6 +250,7 @@ export function LocationPage({
 
       <footer className="location-footer">
         <a href="/">NEST Outdoor Systems</a>
+        <a href="/about">About &amp; team</a>
         <span>Chicago · Nashville</span>
         <nav aria-label="Legal information">
           <a href="/privacy">Privacy</a>

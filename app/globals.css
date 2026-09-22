@@ -313,7 +313,7 @@ select {
 }
 .nav-links {
   display: flex;
-  gap: 2.2rem;
+  gap: clamp(0.9rem, 1.8vw, 2.2rem);
   font-size: 0.88rem;
 }
 .nav-links a {
@@ -2330,4 +2330,154 @@ button:disabled {
   .location-hero { min-height: 680px; }
   .location-system-grid { grid-template-columns: 1fr; }
   .location-footer { flex-direction: column; }
+}
+
+/* Company, project-lead and delivery-process page */
+.about-page {
+  color: var(--ink);
+  background: var(--paper);
+}
+.about-hero {
+  position: relative;
+  display: flex;
+  min-height: 720px;
+  align-items: flex-end;
+  overflow: hidden;
+  padding: clamp(8rem, 16vw, 13rem) clamp(1.5rem, 7vw, 8rem);
+  color: white;
+}
+.about-hero-image,
+.about-hero-shade {
+  position: absolute;
+  inset: 0;
+}
+.about-hero-image {
+  background: url('/pergola-hero.webp') center/cover no-repeat;
+  transform: scale(1.01);
+}
+.about-hero-shade {
+  background: linear-gradient(90deg, #0d1412f2 0%, #0d1412b5 54%, #0d14123f 100%);
+}
+.about-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 990px;
+}
+.about-hero h1 {
+  margin: 1rem 0 1.5rem;
+  font: 400 clamp(3rem, 7vw, 7rem)/0.92 Georgia, serif;
+  letter-spacing: -0.04em;
+}
+.about-hero h1 em {
+  color: #dfb28f;
+  font-weight: 400;
+}
+.about-hero-content > p:not(.eyebrow) {
+  max-width: 720px;
+  color: #ffffffc7;
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  line-height: 1.7;
+}
+.about-lead,
+.about-service {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: clamp(2rem, 8vw, 9rem);
+  align-items: start;
+}
+.about-lead-copy h2,
+.about-service h2,
+.about-model h2,
+.about-contact-card h2 {
+  margin: 0.8rem 0 1.5rem;
+  font: 400 clamp(2.4rem, 5vw, 5rem)/1 Georgia, serif;
+}
+.about-lead-copy > p:not(.eyebrow),
+.about-service > div:last-child p {
+  max-width: 760px;
+  color: #555c58;
+  font-size: clamp(1rem, 1.25vw, 1.18rem);
+  line-height: 1.75;
+}
+.about-contact-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.8rem, 4vw, 3.3rem);
+  color: white;
+  background: var(--ink);
+}
+.about-contact-card > span {
+  color: #d7b08e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.about-contact-card h2 {
+  margin-bottom: 0.35rem;
+  font-size: clamp(2rem, 4vw, 3.7rem);
+}
+.about-contact-card > p {
+  margin: 0 0 2rem;
+  color: #ffffff9f;
+}
+.about-contact-card a {
+  padding: 0.8rem 0;
+  border-top: 1px solid #ffffff30;
+  overflow-wrap: anywhere;
+}
+.about-contact-card small {
+  margin-top: 1.5rem;
+  color: #ffffff92;
+  line-height: 1.6;
+}
+.about-model {
+  color: white;
+  background: var(--ink);
+}
+.about-model-heading { max-width: 850px; }
+.about-model-heading > p:not(.eyebrow) {
+  max-width: 700px;
+  color: #ffffffa5;
+  line-height: 1.7;
+}
+.about-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: clamp(2rem, 5vw, 4.5rem);
+  border-top: 1px solid #ffffff2b;
+  border-left: 1px solid #ffffff2b;
+}
+.about-stage-grid article {
+  min-height: 235px;
+  padding: clamp(1.3rem, 2.5vw, 2.3rem);
+  border-right: 1px solid #ffffff2b;
+  border-bottom: 1px solid #ffffff2b;
+}
+.about-stage-grid article > span {
+  color: #d49a71;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+}
+.about-stage-grid h3 {
+  margin: 3rem 0 0.8rem;
+  font: 400 1.45rem Georgia, serif;
+}
+.about-stage-grid p {
+  color: #ffffff9f;
+  font-size: 0.87rem;
+  line-height: 1.65;
+}
+.about-service .button {
+  display: inline-flex;
+  margin-top: 1rem;
+}
+@media (max-width: 900px) {
+  .about-lead,
+  .about-service { grid-template-columns: 1fr; }
+  .about-stage-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .about-hero { min-height: 650px; }
+  .about-stage-grid { grid-template-columns: 1fr; }
 }

@@ -21,6 +21,18 @@ const structuredData = [
     },
     email: "hello@nestpergola.com",
     telephone: "+1-312-316-8047",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "project consultation",
+      telephone: "+1-312-316-8047",
+      email: "hello@nestpergola.com",
+      availableLanguage: ["English", "Turkish"],
+    },
+    employee: {
+      "@type": "Person",
+      name: "Veysel Yildirim",
+      jobTitle: "Manager",
+    },
     areaServed: ["Chicago, Illinois", "Nashville, Tennessee"],
   },
   {

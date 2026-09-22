@@ -39,6 +39,7 @@ Permit requirements vary by property, municipality, system size, structural scop
 ## Canonical pages
 
 - Homepage and visualizer: https://www.nestpergola.com/
+- About NEST and the project team: https://www.nestpergola.com/about
 - Chicago service page: https://www.nestpergola.com/locations/chicago-il
 - Nashville service page: https://www.nestpergola.com/locations/nashville-tn
 - Privacy Policy: https://www.nestpergola.com/privacy
