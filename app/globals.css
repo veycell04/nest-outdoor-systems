@@ -2101,7 +2101,13 @@ button:disabled {
   color: white;
   border-bottom: 1px solid #ffffff35;
 }
-.location-nav .brand img { width: min(220px, 38vw); }
+.location-nav .brand {
+  width: min(220px, 48vw);
+}
+.location-nav .brand img {
+  width: 100%;
+  max-width: 100%;
+}
 .location-nav > div {
   display: flex;
   align-items: center;
