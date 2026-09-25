@@ -25,7 +25,7 @@ import {
 } from "../../../lib/visualizer-storage";
 
 export const runtime = "nodejs";
-export const maxDuration = 100;
+export const maxDuration = 180;
 const MAX_DIMENSION = 4096,
   requests = new Map<string, number[]>(),
   completed = new Map<string, { at: number }>();
@@ -623,7 +623,9 @@ export async function POST(request: Request) {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         body: outbound,
-        signal: AbortSignal.any([request.signal, AbortSignal.timeout(88000)]),
+        // Leave enough time after the provider responds to validate and store
+        // the generated concept before Vercel reaches maxDuration.
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(150000)]),
       }),
       providerRequestId = response.headers.get("x-request-id");
     let result: {

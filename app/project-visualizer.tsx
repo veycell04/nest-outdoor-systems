@@ -873,7 +873,7 @@ export function ProjectVisualizer({
     timeoutRef.current = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 90_000);
+    }, 170_000);
     try {
       const sharedDesignFingerprint = await hashText(sharedDesignFingerprintSource({
           productId: selected.id, ...designSpecs, measurements,
@@ -1083,7 +1083,7 @@ export function ProjectVisualizer({
               ? `API failure. ${rawMessage}`
               : rawMessage,
         message = timedOut
-        ? `Generation timed out after 90 seconds. Reference: ${requestId}`
+        ? `Generation timed out after 170 seconds. Please retry. Reference: ${requestId}`
         : controller.signal.aborted
           ? `Generation cancelled. Reference: ${requestId}`
           : stageMessage;

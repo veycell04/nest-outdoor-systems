@@ -199,9 +199,24 @@ test("the photo visualizer stays separate from the 3D configurator", async () =>
   assert.doesNotMatch(source, /Customize in 3D|<PergolaViewer|advanced-3d|<Canvas/);
   assert.match(source, /Generate This View/);
   assert.match(source, /Create Higher-Quality Version/);
-  assert.match(source, /90_000/);
   assert.doesNotMatch(page, /<PergolaViewer/);
   assert.doesNotMatch(page, /id="estimate"/);
+});
+
+test("generation timeout budgets leave room to store and return the result", async () => {
+  const fs = await import("node:fs/promises"),
+    client = await fs.readFile(
+      new URL("../app/project-visualizer.tsx", import.meta.url),
+      "utf8",
+    ),
+    route = await fs.readFile(
+      new URL("../app/api/visualize/route.ts", import.meta.url),
+      "utf8",
+    );
+  assert.match(client, /170_000/);
+  assert.match(client, /timed out after 170 seconds/);
+  assert.match(route, /maxDuration\s*=\s*180/);
+  assert.match(route, /AbortSignal\.timeout\(150000\)/);
 });
 
 test("multi-angle views retain independent photos, polygons, and concepts", async () => {
