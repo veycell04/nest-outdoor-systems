@@ -870,10 +870,16 @@ export function ProjectVisualizer({
     abortRef.current = controller;
     let timedOut = false;
     let requestStage: "preparing" | "session" | "upload" | "api" = "preparing";
-    timeoutRef.current = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, 170_000);
+    const armTimeout = (milliseconds: number) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, milliseconds);
+    };
+    // Uploading and AI generation are separate network operations. Do not let
+    // photo preparation and Blob upload consume the provider's time budget.
+    armTimeout(60_000);
     try {
       const sharedDesignFingerprint = await hashText(sharedDesignFingerprintSource({
           productId: selected.id, ...designSpecs, measurements,
@@ -982,6 +988,8 @@ export function ProjectVisualizer({
           : "Creating your concept…",
       );
       requestStage = "api";
+      timedOut = false;
+      armTimeout(160_000);
       const response = await fetch("/api/visualize", {
           method: "POST",
           headers: {
@@ -1083,7 +1091,9 @@ export function ProjectVisualizer({
               ? `API failure. ${rawMessage}`
               : rawMessage,
         message = timedOut
-        ? `Generation timed out after 170 seconds. Please retry. Reference: ${requestId}`
+        ? requestStage === "api"
+          ? `The image service did not finish this concept. Please retry. Reference: ${requestId}`
+          : `The photo upload timed out. Please retry. Reference: ${requestId}`
         : controller.signal.aborted
           ? `Generation cancelled. Reference: ${requestId}`
           : stageMessage;

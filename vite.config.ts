@@ -43,7 +43,15 @@ export default defineConfig(async () => {
 
   if (process.env.VERCEL) {
     return {
-      plugins: [vinext(), nitro()],
+      plugins: [
+        vinext(),
+        nitro({
+          // Vinext/Nitro emits one Vercel function for the app, so route-level
+          // `export const maxDuration` values are not written to .vc-config.json.
+          // Configure the generated function itself instead.
+          vercel: { functions: { maxDuration: 180 } },
+        }),
+      ],
     };
   }
 

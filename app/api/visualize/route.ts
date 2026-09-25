@@ -1,6 +1,6 @@
 import { get, head, put } from "@vercel/blob";
 import { createHash } from "node:crypto";
-import { getProduct } from "../../../lib/products";
+import { getProduct, getProductDisplayImage } from "../../../lib/products";
 import {
   addOnIds,
   addOnLabels,
@@ -42,7 +42,7 @@ export function generationCacheKey(
   configuration: Record<string, unknown>,
 ) {
   return createHash("sha256")
-    .update("customer-photo-edit-v5-mandatory-addons")
+    .update("customer-photo-edit-v6-optimized-references")
     .update(Buffer.from(photoBytes))
     .update(Buffer.from(maskBytes))
     .update(JSON.stringify(configuration))
@@ -409,13 +409,16 @@ export async function POST(request: Request) {
   const referencePaths = [
     ...product.referenceImages,
     ...addOnProducts.flatMap((addOn) => addOn!.referenceImages),
-  ];
+  ],
+    providerReferencePaths = [product, ...addOnProducts]
+      .map((referenceProduct) => getProductDisplayImage(referenceProduct!));
   logTransfer({
     requestId,
     stage: "configuration_validated",
     productId,
     selectedAddOns,
     referencePaths,
+    providerReferencePaths,
     projectId,
     viewId,
     generationOrder,
@@ -555,7 +558,7 @@ export async function POST(request: Request) {
   );
   const referenceHashes: string[] = [];
   try {
-    for (const [index, path] of referencePaths.entries()) {
+    for (const [index, path] of providerReferencePaths.entries()) {
       if (!/^\/(?:projects|media)\/[A-Za-z0-9._-]+$/.test(path))
         throw new Error("Unsafe product reference path");
       const reference = await fetch(new URL(path, request.url));
@@ -577,6 +580,7 @@ export async function POST(request: Request) {
       productId,
       selectedAddOns,
       referencePaths,
+      providerReferencePaths,
       projectId,
       viewId,
       generationOrder,
@@ -612,6 +616,7 @@ export async function POST(request: Request) {
     metadataBytes,
     selectedAddOns,
     referencePaths,
+    providerReferencePaths,
     projectId,
     viewId,
     generationOrder,

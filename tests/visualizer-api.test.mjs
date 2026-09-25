@@ -213,8 +213,9 @@ test("generation timeout budgets leave room to store and return the result", asy
       new URL("../app/api/visualize/route.ts", import.meta.url),
       "utf8",
     );
-  assert.match(client, /170_000/);
-  assert.match(client, /timed out after 170 seconds/);
+  assert.match(client, /armTimeout\(60_000\)/);
+  assert.match(client, /armTimeout\(160_000\)/);
+  assert.match(client, /Do not let[\s\S]*photo preparation and Blob upload consume/);
   assert.match(route, /maxDuration\s*=\s*180/);
   assert.match(route, /AbortSignal\.timeout\(150000\)/);
 });
@@ -607,7 +608,7 @@ test("server cache keys the optimized photo and synchronized configuration", asy
     withoutAddOn = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: [] }),
     withSolidroll = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: ["solidroll"] });
   assert.notEqual(withoutAddOn, withSolidroll);
-  assert.match(source, /customer-photo-edit-v5-mandatory-addons/);
+  assert.match(source, /customer-photo-edit-v6-optimized-references/);
   assert.doesNotMatch(source, /customer-photo-edit-v4-konva-polygon/);
   assert.match(source, /createHash\("sha256"\)/);
   assert.match(source, /Buffer\.from\(photoBytes\)/);
@@ -615,6 +616,23 @@ test("server cache keys the optimized photo and synchronized configuration", asy
   assert.match(source, /stage:\s*"cache_hit"/);
   assert.match(source, /cached:\s*true/);
   assert.match(source, /OPENAI_IMAGE_PREVIEW_QUALITY\s*\|\|\s*"low"/);
+  assert.match(source, /getProductDisplayImage/);
+  assert.match(source, /providerReferencePaths/);
+});
+
+test("Vercel receives the Nitro function duration and lightweight AI references", async () => {
+  const fs = await import("node:fs/promises"),
+    viteConfig = await fs.readFile(
+      new URL("../vite.config.ts", import.meta.url),
+      "utf8",
+    ),
+    route = await fs.readFile(
+      new URL("../app/api/visualize/route.ts", import.meta.url),
+      "utf8",
+    );
+  assert.match(viteConfig, /vercel:\s*\{\s*functions:\s*\{\s*maxDuration:\s*180/);
+  assert.match(route, /for \(const \[index, path\] of providerReferencePaths\.entries\(\)\)/);
+  assert.match(route, /getProductDisplayImage\(referenceProduct!\)/);
 });
 
 test("visualize exchanges private object IDs and never returns base64 image JSON", async () => {
