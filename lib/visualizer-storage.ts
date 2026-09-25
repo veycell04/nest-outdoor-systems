@@ -107,6 +107,7 @@ export function logTransfer(details: {
   selectedAddOns?: readonly string[];
   referencePaths?: readonly string[];
   providerReferencePaths?: readonly string[];
+  providerModel?: string | null;
   projectId?: string | null;
   viewId?: string | null;
   generationOrder?: number | null;
@@ -128,6 +129,7 @@ export function logTransfer(details: {
       selectedAddOns: details.selectedAddOns ?? [],
       referencePaths: details.referencePaths ?? [],
       providerReferencePaths: details.providerReferencePaths ?? [],
+      providerModel: details.providerModel ?? null,
       projectId: details.projectId ?? null,
       viewId: details.viewId ?? null,
       generationOrder: details.generationOrder ?? null,

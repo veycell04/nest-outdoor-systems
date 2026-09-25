@@ -608,7 +608,7 @@ test("server cache keys the optimized photo and synchronized configuration", asy
     withoutAddOn = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: [] }),
     withSolidroll = generationCacheKey(photo, mask, { productId: "pvc", selectedAddOns: ["solidroll"] });
   assert.notEqual(withoutAddOn, withSolidroll);
-  assert.match(source, /customer-photo-edit-v6-optimized-references/);
+  assert.match(source, /customer-photo-edit-v7-fast-preview-model/);
   assert.doesNotMatch(source, /customer-photo-edit-v4-konva-polygon/);
   assert.match(source, /createHash\("sha256"\)/);
   assert.match(source, /Buffer\.from\(photoBytes\)/);
@@ -618,6 +618,10 @@ test("server cache keys the optimized photo and synchronized configuration", asy
   assert.match(source, /OPENAI_IMAGE_PREVIEW_QUALITY\s*\|\|\s*"low"/);
   assert.match(source, /getProductDisplayImage/);
   assert.match(source, /providerReferencePaths/);
+  assert.match(source, /OPENAI_IMAGE_PREVIEW_MODEL\s*\|\|\s*"gpt-image-2\.5-flare"/);
+  assert.match(source, /OPENAI_IMAGE_HIGH_QUALITY_MODEL/);
+  assert.match(source, /"1536x1024"/);
+  assert.match(source, /"1024x1536"/);
 });
 
 test("Vercel receives the Nitro function duration and lightweight AI references", async () => {

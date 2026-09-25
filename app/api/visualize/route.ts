@@ -42,7 +42,7 @@ export function generationCacheKey(
   configuration: Record<string, unknown>,
 ) {
   return createHash("sha256")
-    .update("customer-photo-edit-v6-optimized-references")
+    .update("customer-photo-edit-v7-fast-preview-model")
     .update(Buffer.from(photoBytes))
     .update(Buffer.from(maskBytes))
     .update(JSON.stringify(configuration))
@@ -354,6 +354,11 @@ export async function POST(request: Request) {
       ? String(specs.colorTarget)
       : null,
     requestedQuality = specs.quality === "high" ? "high" : "preview",
+    providerModel = requestedQuality === "high"
+      ? process.env.OPENAI_IMAGE_HIGH_QUALITY_MODEL ||
+        process.env.OPENAI_IMAGE_MODEL ||
+        "gpt-image-2.5-sunburst"
+      : process.env.OPENAI_IMAGE_PREVIEW_MODEL || "gpt-image-2.5-flare",
     projectId = cleanText(input.projectId, 100) || cleanText(specs.projectId, 100) || requestId,
     viewId = ["front", "left", "right"].includes(String(input.viewId || specs.viewId)) ? String(input.viewId || specs.viewId) : "front",
     viewLabel = cleanText(input.viewLabel, 40) || cleanText(specs.viewLabel, 40) || "Front View",
@@ -544,7 +549,7 @@ export async function POST(request: Request) {
   const outbound = new FormData();
   outbound.append(
     "model",
-    process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst",
+    providerModel,
   );
   outbound.append(
     "image[]",
@@ -600,7 +605,14 @@ export async function POST(request: Request) {
       ? process.env.OPENAI_IMAGE_HIGH_QUALITY || "high"
       : process.env.OPENAI_IMAGE_PREVIEW_QUALITY || "low",
   );
-  outbound.append("size", "auto");
+  outbound.append(
+    "size",
+    photoInfo.width > photoInfo.height
+      ? "1536x1024"
+      : photoInfo.height > photoInfo.width
+        ? "1024x1536"
+        : "1024x1024",
+  );
   outbound.append("output_format", "jpeg");
   outbound.append(
     "output_compression",
@@ -617,6 +629,7 @@ export async function POST(request: Request) {
     selectedAddOns,
     referencePaths,
     providerReferencePaths,
+    providerModel,
     projectId,
     viewId,
     generationOrder,
