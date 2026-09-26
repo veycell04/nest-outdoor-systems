@@ -35,7 +35,6 @@ export type VisualizerHandoff = {
 };
 export type ProjectViewId = "front" | "left" | "right";
 type Measurements = { width: string; depth: string; height: string };
-type StructureSize = "compact" | "standard" | "maximum";
 type NormalizedPhoto = {
   uploadId: string; file: File; url: string; normalized: Blob; hash: string;
   originalBytes: number; width: number; height: number;
@@ -284,20 +283,6 @@ export function isPlacementReady(points: readonly PolygonPoint[]) {
       point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1,
   );
 }
-export function scalePlacement(
-  points: readonly PolygonPoint[],
-  scale: number,
-): PolygonPoint[] {
-  if (points.length !== 4) return [...points];
-  const center = points.reduce(
-    (value, point) => ({ x: value.x + point.x / 4, y: value.y + point.y / 4 }),
-    { x: 0, y: 0 },
-  );
-  return points.map((point) => ({
-    x: center.x + (point.x - center.x) * scale,
-    y: center.y + (point.y - center.y) * scale,
-  }));
-}
 const toJpeg = (canvas: HTMLCanvasElement, quality = 0.82) =>
   new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
@@ -376,7 +361,6 @@ export function ProjectVisualizer({
       height: "",
     }),
     [addOns, setAddOns] = useState<AddOnId[]>([]),
-    [structureSize, setStructureSize] = useState<StructureSize>("compact"),
     [frameColor, setFrameColor] = useState("Anthracite Gray"),
     [louverColor, setLouverColor] = useState("Match Frame"),
     [zipFabricColor, setZipFabricColor] = useState("Sand"),
@@ -622,7 +606,7 @@ export function ProjectVisualizer({
       next = workflow[workflow.indexOf(activeViewId) + 1];
     if (next) setActiveViewId(next);
   }
-  async function automaticMask(view: ProjectView = activeView, size: StructureSize = structureSize) {
+  async function automaticMask(view: ProjectView = activeView) {
     const { photo, placement } = view;
     if (!photo) throw new Error("Photo is not ready");
     const canvas = document.createElement("canvas");
@@ -640,13 +624,9 @@ export function ProjectVisualizer({
     context.fillRect(0, 0, canvas.width, canvas.height);
     if (placement.length !== 4)
       throw new Error("Select all four installation-area corners first.");
-    const maskPlacement = scalePlacement(
-      placement,
-      size === "compact" ? 0.68 : size === "standard" ? 0.82 : 0.95,
-    );
     context.save();
     context.beginPath();
-    maskPlacement.forEach((point, index) => {
+    placement.forEach((point, index) => {
       const x = bounds.x + point.x * bounds.width,
         y = bounds.y + point.y * bounds.height;
       if (index === 0) context.moveTo(x, y);
@@ -712,7 +692,6 @@ export function ProjectVisualizer({
       : displayColor(louverColor, louverCustomColor, louverCustomColorName);
   const designSpecs = {
     addOnIds: addOns,
-    structureSize,
     frameColor: resolvedFrameColor,
     louverColor: usesLouverColor(primaryId) ? resolvedLouverColor : null,
     louverColorMatchesFrame:
@@ -826,7 +805,6 @@ export function ProjectVisualizer({
       return resetProjectViewDesign(view);
     }));
     setAddOns([]);
-    setStructureSize("compact");
     setFrameColor("Anthracite Gray");
     setLouverColor("Match Frame");
     setZipFabricColor("Sand");
@@ -859,7 +837,6 @@ export function ProjectVisualizer({
     return [
       `Primary system: ${primaryLabels[primaryId] || product.label}`,
       `Add-ons: ${addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}`,
-      `Structure size: ${structureSize === "compact" ? "Compact" : structureSize === "maximum" ? "Maximum coverage" : "Standard"}`,
       `Frame color preference: ${designSpecs.frameColor}`,
       designSpecs.louverColor &&
         `Louver / roof color preference: ${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}`,
@@ -948,11 +925,7 @@ export function ProjectVisualizer({
             })
           : photo.normalized,
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
-        effectivePlacement = scalePlacement(
-          placement,
-          structureSize === "compact" ? 0.68 : structureSize === "standard" ? 0.82 : 0.95,
-        ),
-        mask = await automaticMask(targetView, structureSize),
+        mask = await automaticMask(targetView),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
       diagnostic.append("mask", mask, "mask.png");
@@ -1049,7 +1022,7 @@ export function ProjectVisualizer({
             specs: {
               ...designSpecs,
               measurements,
-              placement: effectivePlacement,
+              placement,
               unit: "ft",
               quality: highQuality ? "high" : "preview",
               editMode: colorUpdate ? "color_update" : "install",
@@ -1589,22 +1562,6 @@ export function ProjectVisualizer({
             </label>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>
-          <fieldset className="structure-size">
-            <legend>Structure Size</legend>
-            <small>The editable area is physically reduced before AI generation.</small>
-            <div>
-              {([
-                ["compact", "Compact", "68% · recommended"],
-                ["standard", "Standard", "82% · balanced"],
-                ["maximum", "Maximum", "95% · fullest coverage"],
-              ] as const).map(([value, label, description]) => (
-                <button key={value} type="button" className={structureSize === value ? "active" : ""} aria-pressed={structureSize === value}
-                  onClick={() => { clearConcept(); setStructureSize(value); }}>
-                  <strong>{label}</strong><span>{description}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
           <ColorSwatches label="Frame Color" options={frameColors} value={frameColor} onChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameColor(value))} />
           {frameColor === "Custom Color" && <CustomColorFields component="Frame" color={frameCustomColor} name={frameCustomColorName} onColorChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameCustomColor(value))} onNameChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameCustomColorName(value))} />}
           {usesLouverColor(primaryId) && <ColorSwatches label="Louver Color" options={louverColors} value={louverColor} onChange={(value) => queueColorUpdate("louver", () => setLouverColor(value))} />}
@@ -1626,7 +1583,6 @@ export function ProjectVisualizer({
             <dl>
               <dt>Primary system</dt><dd>{primaryLabels[primaryId]}</dd>
               <dt>Add-ons</dt><dd>{addOns.length ? addOns.map((id) => addOnLabels[id]).join(", ") : "None"}</dd>
-              <dt>Structure size</dt><dd>{structureSize === "compact" ? "Compact" : structureSize === "maximum" ? "Maximum coverage" : "Standard"}</dd>
               <dt>Frame color</dt><dd>{designSpecs.frameColor}</dd>
               <dt>Louver / roof color</dt><dd>{designSpecs.louverColor ? `${designSpecs.louverColor}${designSpecs.louverColorMatchesFrame ? " (matches frame)" : ""}` : "Not applicable"}</dd>
               <dt>ZIP fabric color</dt><dd>{designSpecs.zipFabricColor || "Not applicable"}</dd>

@@ -330,9 +330,6 @@ export async function POST(request: Request) {
     selectedAddOns = requestedAddOns
       .filter((id) => compatibility[primaryProductId].includes(id))
       .slice(0, 3),
-    structureSize = ["compact", "standard", "maximum"].includes(String(specs.structureSize))
-      ? String(specs.structureSize)
-      : "compact",
     addOnProducts = selectedAddOns
       .filter((id) => id !== "led")
       .map((id) => getProduct(id))
@@ -381,7 +378,6 @@ export async function POST(request: Request) {
     cacheConfiguration = {
           productId,
           selectedAddOns,
-          structureSize,
           frameColor,
           louverColor,
           zipFabricColor,
@@ -444,7 +440,6 @@ export async function POST(request: Request) {
         fabricColor,
         glassSystemColor,
         selectedAddOns,
-        structureSize,
         referencePaths,
         projectId,
         viewId,
@@ -545,7 +540,7 @@ export async function POST(request: Request) {
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     editMode === "color_update"
       ? "Keep the existing structure size and footprint exactly unchanged."
-      : `STRICT SCALE: The editable mask has already been geometrically reduced for the ${structureSize} size. Keep the complete structure, roof, posts, glazing, screens, shadows, and every add-on fully inside that reduced mask. Do not attempt to refill the original patio area. Leave visible clearance around every edge. Never extend into a sidewalk, street, doorway, tree, fence line, neighboring property, or outside the mask.`,
+      : "EXACT POLYGON FIT: The four selected corners are the intended outside corners of the finished structure. Align the structure's outer posts and roof perimeter to those corners in the photograph's perspective. Fill the selected polygon naturally and completely, but never cross its edges. Do not make the structure smaller than the selected frame and do not extend into a sidewalk, street, doorway, tree, fence line, neighboring property, or outside the mask.",
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
     `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
     colorsDiffer
