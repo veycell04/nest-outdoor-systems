@@ -82,6 +82,19 @@ export function updateProjectViewState(
 ) {
   return views.map((view) => view.id === viewId ? { ...view, ...patch } : view);
 }
+export function resetProjectViewDesign(view: ProjectView): ProjectView {
+  return {
+    ...view,
+    concept: null,
+    status: view.photo
+      ? "Design reset. Your photo and installation area were kept."
+      : "",
+    requestId: null,
+    uploadProgress: 0,
+    generating: false,
+    stale: false,
+  };
+}
 type ColorUpdate = { target: ColorTarget; source: Concept; sequence: number };
 const frameColors = [
   ["Anthracite Gray", "#3b4141"], ["Matte Black", "#171918"],
@@ -769,7 +782,28 @@ export function ProjectVisualizer({
     setMeasurements((current) => ({ ...current, [key]: value }));
   }
   function resetDesign() {
-    clearConcept();
+    batchCancelledRef.current = true;
+    batchGeneratingRef.current = false;
+    setBatchGenerating(false);
+    setBatchStatus("");
+    colorSequenceRef.current += 1;
+    if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
+    colorTimerRef.current = null;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    activeRequestRef.current = null;
+    colorUpdateActiveRef.current = false;
+    generatingRef.current = false;
+    setUpdatingColors(false);
+    setElapsed(0);
+    setCompare(50);
+    setViews((current) => current.map((view) => {
+      if (view.concept?.image.startsWith("blob:"))
+        URL.revokeObjectURL(view.concept.image);
+      return resetProjectViewDesign(view);
+    }));
     setAddOns([]);
     setFrameColor("Anthracite Gray");
     setLouverColor("Match Frame");

@@ -374,6 +374,40 @@ test("manual concept generation validates readiness and owns its request lock", 
   assert.match(css, /\.design-summary\s*\{[\s\S]{0,180}position:\s*static/);
 });
 
+test("reset design removes concepts but preserves customer photos and placement", async () => {
+  const { resetProjectViewDesign } = await vite.ssrLoadModule(
+      "/app/project-visualizer.tsx",
+    ),
+    photo = { uploadId: "photo-1", url: "blob:photo" },
+    placement = [
+      { x: 0.1, y: 0.1 },
+      { x: 0.9, y: 0.1 },
+      { x: 0.9, y: 0.9 },
+      { x: 0.1, y: 0.9 },
+    ],
+    reset = resetProjectViewDesign({
+      id: "front",
+      label: "Front View",
+      required: true,
+      photo,
+      placement,
+      concept: { image: "blob:concept" },
+      status: "Creating your concept…",
+      requestId: "request-1",
+      uploadProgress: 72,
+      generating: true,
+      stale: true,
+    });
+  assert.equal(reset.photo, photo);
+  assert.equal(reset.placement, placement);
+  assert.equal(reset.concept, null);
+  assert.equal(reset.generating, false);
+  assert.equal(reset.stale, false);
+  assert.equal(reset.requestId, null);
+  assert.equal(reset.uploadProgress, 0);
+  assert.match(reset.status, /photo and installation area were kept/i);
+});
+
 test("uploaded photos and canvas composition use centered contain geometry", async () => {
   const fs = await import("node:fs/promises"),
     [{ containRect }, source, css, legacy] = await Promise.all([
