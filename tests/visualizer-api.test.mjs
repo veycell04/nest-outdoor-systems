@@ -658,7 +658,9 @@ test("visualize exchanges private object IDs and never returns base64 image JSON
   assert.match(route, /put\(/);
   assert.match(route, /imageUrl:\s*signedResultUrl/);
   assert.doesNotMatch(route, /data:image\/jpeg;base64/);
-  assert.match(client, /@vercel\/blob\/client/);
+  assert.doesNotMatch(client, /@vercel\/blob\/client/);
+  assert.match(client, /uploadPrivateImage/);
+  assert.match(client, /fetch\("\/api\/visualize\/upload"/);
 });
 
 test("large generated results are stored before a small JSON response", async () => {

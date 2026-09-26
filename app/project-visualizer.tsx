@@ -3,7 +3,6 @@
 import { Download, ImagePlus, Send, Sparkles, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { upload } from "@vercel/blob/client";
 import useEmblaCarousel from "embla-carousel-react";
 import {
   getProductDisplayImage,
@@ -938,48 +937,27 @@ export function ProjectVisualizer({
         session = await sessionResponse.json().catch(() => null);
       if (!sessionResponse.ok || typeof session?.uploadPrefix !== "string")
         throw new Error("The secure upload session could not be created.");
-      let photoPct = 0,
-        maskPct = 0;
-      const progress = () =>
-        setUploadProgress(Math.round((photoPct + maskPct) / 2));
-      const common = {
-        access: "private" as const,
-        handleUploadUrl: "/api/visualize/upload",
-        abortSignal: controller.signal,
+      const uploadPrivateImage = async (kind: "photo" | "mask", file: Blob) => {
+        const form = new FormData();
+        form.append("requestId", requestId);
+        form.append("kind", kind);
+        form.append("file", file, kind === "mask" ? "mask.png" : "photo.jpg");
+        const response = await fetch("/api/visualize/upload", {
+            method: "POST",
+            headers: { "X-Request-ID": requestId },
+            body: form,
+            signal: controller.signal,
+          }),
+          payload = await response.json().catch(() => null);
+        if (!response.ok || typeof payload?.pathname !== "string")
+          throw new Error(payload?.error || `The ${kind} upload failed.`);
+        return payload.pathname as string;
       };
       requestStage = "upload";
-      const [photoUpload, maskUpload] = await Promise.all([
-        upload(
-          `${session.uploadPrefix}/${requestId}/photo.jpg`,
-          editSource,
-          {
-            ...common,
-            contentType: "image/jpeg",
-            clientPayload: JSON.stringify({
-              requestId,
-              kind: "photo",
-              extension: "jpg",
-            }),
-            onUploadProgress: (event) => {
-              photoPct = event.percentage;
-              progress();
-            },
-          },
-        ),
-        upload(`${session.uploadPrefix}/${requestId}/mask.png`, mask, {
-          ...common,
-          contentType: "image/png",
-          clientPayload: JSON.stringify({
-            requestId,
-            kind: "mask",
-            extension: "png",
-          }),
-          onUploadProgress: (event) => {
-            maskPct = event.percentage;
-            progress();
-          },
-        }),
-      ]);
+      setUploadProgress(10);
+      const photoObjectId = await uploadPrivateImage("photo", editSource);
+      setUploadProgress(55);
+      const maskObjectId = await uploadPrivateImage("mask", mask);
       setUploadProgress(100);
       setStatus(
         colorUpdate
@@ -998,8 +976,8 @@ export function ProjectVisualizer({
             "X-Request-ID": requestId,
           },
           body: JSON.stringify({
-            photoObjectId: photoUpload.pathname,
-            maskObjectId: maskUpload.pathname,
+            photoObjectId,
+            maskObjectId,
             photoHash: editSourceHash,
             productId: selected.id,
             requestId,

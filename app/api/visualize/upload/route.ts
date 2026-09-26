@@ -1,4 +1,5 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import {
   createRequestId,
   customerError,
@@ -18,6 +19,45 @@ export async function POST(request: Request) {
   const startedAt = Date.now(),
     requestId = createRequestId(request.headers.get("x-request-id")),
     sessionId = readSession(request);
+  if (request.headers.get("content-type")?.includes("multipart/form-data")) {
+    try {
+      if (!sessionId) throw new Error("Missing upload session");
+      const form = await request.formData(),
+        uploadRequestId = createRequestId(String(form.get("requestId") || "")),
+        kind = String(form.get("kind") || ""),
+        file = form.get("file");
+      if (kind !== "photo" && kind !== "mask")
+        throw new Error("Invalid upload kind");
+      if (!(file instanceof File)) throw new Error("Missing upload file");
+      const isMask = kind === "mask",
+        maximumSize = isMask ? MASK_MAX_BYTES : PHOTO_MAX_BYTES,
+        allowedTypes = isMask
+          ? ["image/png"]
+          : ["image/jpeg", "image/webp"];
+      if (!allowedTypes.includes(file.type) || file.size <= 0 || file.size > maximumSize)
+        throw new Error("Upload type or size is invalid");
+      const extension = isMask ? "png" : file.type === "image/webp" ? "webp" : "jpg",
+        pathname = uploadPath(sessionId, uploadRequestId, kind, extension),
+        blob = await put(pathname, file, {
+          access: "private",
+          addRandomSuffix: false,
+          allowOverwrite: false,
+          contentType: file.type,
+        });
+      logTransfer({
+        requestId: uploadRequestId,
+        stage: `${kind}_uploaded_server`,
+        ...(isMask ? { maskBytes: file.size } : { photoBytes: file.size }),
+      });
+      return Response.json(
+        { pathname: blob.pathname },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    } catch (error) {
+      logFailure({ requestId, stage: "upload", startedAt, status: 400, error });
+      return customerError("The private upload could not be completed.", requestId, 400);
+    }
+  }
   let body: HandleUploadBody;
   try {
     body = await request.json();
