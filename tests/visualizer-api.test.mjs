@@ -408,13 +408,23 @@ test("reset design removes concepts but preserves customer photos and placement"
   assert.match(reset.status, /photo and installation area were kept/i);
 });
 
-test("generation uses the exact customer-selected polygon footprint", async () => {
+test("generation keeps visible points stable and uses a refined inset footprint", async () => {
   const fs = await import("node:fs/promises"),
-    client = await fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    [{ insetPlacement }, client] = await Promise.all([
+      vite.ssrLoadModule("/app/project-visualizer.tsx"),
+      fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
+    ]),
     route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
-  assert.doesNotMatch(client, /scalePlacement|structureSize/);
-  assert.match(route, /EXACT POLYGON FIT/);
-  assert.match(route, /do not make the structure smaller than the selected frame/i);
+  const inset = insetPlacement([
+    { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
+  ]);
+  assert.ok(Math.abs(inset[0].x - 0.05) < 0.000001);
+  assert.ok(Math.abs(inset[0].y - 0.05) < 0.000001);
+  assert.ok(Math.abs(inset[2].x - 0.95) < 0.000001);
+  assert.ok(Math.abs(inset[2].y - 0.95) < 0.000001);
+  assert.match(client, /insetPlacement\(placement, 0\.9\)/);
+  assert.match(route, /REFINED POLYGON FIT/);
+  assert.match(route, /elegant, slender structural proportions/i);
 });
 
 test("uploaded photos and canvas composition use centered contain geometry", async () => {
@@ -453,7 +463,7 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   assert.match(source, /orientationchange/);
   assert.match(
     source,
-    /placement\.forEach\([\s\S]{0,500}context\.clip\(\)[\s\S]{0,160}context\.clearRect\(0, 0, canvas\.width, canvas\.height\)/,
+    /effectivePlacement\.forEach\([\s\S]{0,500}context\.clip\(\)[\s\S]{0,160}context\.clearRect\(0, 0, canvas\.width, canvas\.height\)/,
   );
   assert.match(
     css,

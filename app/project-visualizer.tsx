@@ -82,6 +82,20 @@ export function updateProjectViewState(
 ) {
   return views.map((view) => view.id === viewId ? { ...view, ...patch } : view);
 }
+export function insetPlacement(
+  points: readonly PolygonPoint[],
+  scale = 0.9,
+): PolygonPoint[] {
+  if (points.length !== 4) return [...points];
+  const center = points.reduce(
+    (total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }),
+    { x: 0, y: 0 },
+  );
+  return points.map((point) => ({
+    x: center.x + (point.x - center.x) * scale,
+    y: center.y + (point.y - center.y) * scale,
+  }));
+}
 export function resetProjectViewDesign(view: ProjectView): ProjectView {
   return {
     ...view,
@@ -606,8 +620,11 @@ export function ProjectVisualizer({
       next = workflow[workflow.indexOf(activeViewId) + 1];
     if (next) setActiveViewId(next);
   }
-  async function automaticMask(view: ProjectView = activeView) {
-    const { photo, placement } = view;
+  async function automaticMask(
+    view: ProjectView = activeView,
+    effectivePlacement: readonly PolygonPoint[] = view.placement,
+  ) {
+    const { photo } = view;
     if (!photo) throw new Error("Photo is not ready");
     const canvas = document.createElement("canvas");
     canvas.width = photo.width;
@@ -622,11 +639,11 @@ export function ProjectVisualizer({
     if (!context || !bounds) throw new Error("Mask preparation failed");
     context.fillStyle = "#000";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    if (placement.length !== 4)
+    if (effectivePlacement.length !== 4)
       throw new Error("Select all four installation-area corners first.");
     context.save();
     context.beginPath();
-    placement.forEach((point, index) => {
+    effectivePlacement.forEach((point, index) => {
       const x = bounds.x + point.x * bounds.width,
         y = bounds.y + point.y * bounds.height;
       if (index === 0) context.moveTo(x, y);
@@ -925,7 +942,8 @@ export function ProjectVisualizer({
             })
           : photo.normalized,
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
-        mask = await automaticMask(targetView),
+        generationPlacement = colorUpdate ? placement : insetPlacement(placement, 0.9),
+        mask = await automaticMask(targetView, generationPlacement),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
       diagnostic.append("mask", mask, "mask.png");
@@ -1022,7 +1040,7 @@ export function ProjectVisualizer({
             specs: {
               ...designSpecs,
               measurements,
-              placement,
+              placement: generationPlacement,
               unit: "ft",
               quality: highQuality ? "high" : "preview",
               editMode: colorUpdate ? "color_update" : "install",
