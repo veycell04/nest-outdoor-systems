@@ -1691,12 +1691,14 @@ button:disabled {
   margin-top: 0.4rem;
 }
 .color-playground,
+.structure-size,
 .lighting-options fieldset {
   margin: 1rem 0 0;
   padding: 0;
   border: 0;
 }
 .color-playground legend,
+.structure-size legend,
 .lighting-options legend {
   margin-bottom: 0.55rem;
   font-size: 0.72rem;
@@ -1704,6 +1706,13 @@ button:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.structure-size > small { display: block; margin-bottom: .75rem; color: #6b716e; }
+.structure-size > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.structure-size button { min-height: 72px; padding: .7rem; border: 1px solid #cbc7bd; background: #fff; color: #171b19; text-align: left; cursor: pointer; }
+.structure-size button.active { border-color: #bd7f56; box-shadow: inset 0 0 0 1px #bd7f56; }
+.structure-size button strong,
+.structure-size button span { display: block; }
+.structure-size button span { margin-top: .25rem; color: #6b716e; font-size: .72rem; line-height: 1.25; }
 .color-swatches {
   display: flex;
   gap: 0.45rem;
@@ -1958,6 +1967,7 @@ button:disabled {
   .measurement-grid,
   .custom-color-fields,
   .lighting-options,
+  .structure-size > div,
   .quick-options { grid-template-columns: 1fr; }
   .color-swatches {
     flex-wrap: wrap;

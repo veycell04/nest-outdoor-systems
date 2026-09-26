@@ -408,6 +408,23 @@ test("reset design removes concepts but preserves customer photos and placement"
   assert.match(reset.status, /photo and installation area were kept/i);
 });
 
+test("structure size geometrically shrinks the editable polygon", async () => {
+  const { scalePlacement } = await vite.ssrLoadModule("/app/project-visualizer.tsx"),
+    original = [
+      { x: 0, y: 0 }, { x: 1, y: 0 },
+      { x: 1, y: 1 }, { x: 0, y: 1 },
+    ],
+    compact = scalePlacement(original, 0.68),
+    standard = scalePlacement(original, 0.82);
+  assert.ok(Math.abs(compact[0].x - 0.16) < 1e-12);
+  assert.ok(Math.abs(compact[0].y - 0.16) < 1e-12);
+  assert.ok(Math.abs(compact[2].x - 0.84) < 1e-12);
+  assert.ok(Math.abs(compact[2].y - 0.84) < 1e-12);
+  assert.ok(Math.abs(standard[0].x - 0.09) < 1e-12);
+  assert.ok(Math.abs(standard[0].y - 0.09) < 1e-12);
+  assert.ok(compact[2].x - compact[0].x < standard[2].x - standard[0].x);
+});
+
 test("uploaded photos and canvas composition use centered contain geometry", async () => {
   const fs = await import("node:fs/promises"),
     [{ containRect }, source, css, legacy] = await Promise.all([
@@ -444,7 +461,7 @@ test("uploaded photos and canvas composition use centered contain geometry", asy
   assert.match(source, /orientationchange/);
   assert.match(
     source,
-    /placement\.forEach\([\s\S]{0,500}context\.clip\(\)[\s\S]{0,160}context\.clearRect\(0, 0, canvas\.width, canvas\.height\)/,
+    /maskPlacement\.forEach\([\s\S]{0,500}context\.clip\(\)[\s\S]{0,160}context\.clearRect\(0, 0, canvas\.width, canvas\.height\)/,
   );
   assert.match(
     css,

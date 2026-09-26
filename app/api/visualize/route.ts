@@ -330,6 +330,9 @@ export async function POST(request: Request) {
     selectedAddOns = requestedAddOns
       .filter((id) => compatibility[primaryProductId].includes(id))
       .slice(0, 3),
+    structureSize = ["compact", "standard", "maximum"].includes(String(specs.structureSize))
+      ? String(specs.structureSize)
+      : "compact",
     addOnProducts = selectedAddOns
       .filter((id) => id !== "led")
       .map((id) => getProduct(id))
@@ -378,6 +381,7 @@ export async function POST(request: Request) {
     cacheConfiguration = {
           productId,
           selectedAddOns,
+          structureSize,
           frameColor,
           louverColor,
           zipFabricColor,
@@ -440,6 +444,7 @@ export async function POST(request: Request) {
         fabricColor,
         glassSystemColor,
         selectedAddOns,
+        structureSize,
         referencePaths,
         projectId,
         viewId,
@@ -538,6 +543,9 @@ export async function POST(request: Request) {
       ? `Keep the installed ${product.label} and every installed add-on unchanged except for the requested color zone: ${options.length ? options.join(", ") : "none"}. Solidroll and every other installed product must remain clearly visible and must not be removed, replaced, redesigned, moved, or regenerated.`
       : `Install the primary system first: ${product.label}. Verified description: ${product.details}. Then install these selected add-ons: ${options.length ? options.join(", ") : "none"}. Every selected add-on must be clearly and visibly installed in the final concept. The result is invalid if any selected add-on is missing. ${mandatoryAddOnInstructions} ${pvcEnclosureInstructions}`,
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
+    editMode === "color_update"
+      ? "Keep the existing structure size and footprint exactly unchanged."
+      : `STRICT SCALE: The editable mask has already been geometrically reduced for the ${structureSize} size. Keep the complete structure, roof, posts, glazing, screens, shadows, and every add-on fully inside that reduced mask. Do not attempt to refill the original patio area. Leave visible clearance around every edge. Never extend into a sidewalk, street, doorway, tree, fence line, neighboring property, or outside the mask.`,
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
     `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
     colorsDiffer
