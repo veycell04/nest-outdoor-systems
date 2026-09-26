@@ -1,4 +1,4 @@
-export type FailureStage = "upload" | "validation" | "image_generation" | "consultation" | "client_render";
+export type FailureStage = "session" | "upload" | "validation" | "image_generation" | "consultation" | "client_render";
 
 type FailureDetails = {
   requestId: string;

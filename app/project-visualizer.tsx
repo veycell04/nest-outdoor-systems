@@ -932,6 +932,7 @@ export function ProjectVisualizer({
       requestStage = "session";
       const sessionResponse = await fetch("/api/visualize/session", {
           method: "POST",
+          headers: { "X-Request-ID": requestId },
           signal: controller.signal,
         }),
         session = await sessionResponse.json().catch(() => null);
@@ -1102,6 +1103,19 @@ export function ProjectVisualizer({
           ? `Color update failed. Your previous concept is still available. Retry by selecting the color again. ${message.includes("Reference:") ? message : `Reference: ${requestId}`}`
           : message.includes("Reference:") ? message : `${message} Reference: ${requestId}`);
         if (!colorUpdate) patchView(viewId, { status: message.includes("Reference:") ? message : `${message} Reference: ${requestId}` });
+        void fetch("/api/client-error", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-ID": requestId,
+          },
+          body: JSON.stringify({
+            message: `[visualizer:${requestStage}] ${message}`,
+            stack: error instanceof Error ? error.stack || null : null,
+            componentStack: null,
+            path: window.location.pathname,
+          }),
+        }).catch(() => {});
       }
     } finally {
       if (activeRequestRef.current === requestId) {
