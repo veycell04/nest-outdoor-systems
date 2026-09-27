@@ -364,10 +364,6 @@ export async function POST(request: Request) {
     viewLabel = cleanText(input.viewLabel, 40) || cleanText(specs.viewLabel, 40) || "Front View",
     sharedDesignFingerprint = cleanText(input.sharedDesignFingerprint, 100) || cleanText(specs.sharedDesignFingerprint, 100) || "single-view-legacy",
     generationOrder = Number.isInteger(specs.generationOrder) ? Number(specs.generationOrder) : 1,
-    structureWidthScale = Math.min(
-      100,
-      Math.max(65, Number(specs.structureWidthScale) || 85),
-    ),
     options = selectedAddOns.map((id) => addOnLabels[id]),
     measurements =
       typeof specs.measurements === "object" && specs.measurements
@@ -544,7 +540,7 @@ export async function POST(request: Request) {
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     editMode === "color_update"
       ? "Keep the existing structure size and footprint exactly unchanged."
-      : `HORIZONTAL WIDTH FIT: Generate the structure at exactly ${structureWidthScale}% of the customer's marked left-to-right storefront span. Center it within the marked frontage and leave clearly visible, untouched margin on both the left and right when the value is below 100%. Do not stretch the product back across the full storefront. Preserve the full marked projection/depth and do not make that dimension shorter. The effective polygon and mask are hard boundaries: every post, beam, roof edge, glass panel, Solidroll panel, and selected add-on must remain inside them. Use elegant, slender structural proportions, balanced post spacing, realistic headroom, and appropriately thin perimeter beams and roof components. Avoid bulky, oversized, squat, or cramped geometry. Integrate the system cleanly with the existing architecture and preserve entrances, walking clearance, and the surrounding property.`,
+      : "REFINED WIDTH FIT: The supplied polygon preserves the customer's full long frontage length, while only the shorter side or projection width may be intentionally reduced. Keep the long front edge span exactly as marked. Do not shorten the storefront frontage. Align the rear edge and side boundaries to the supplied projection-width coordinates without expanding them back toward the original depth. Use elegant, slender structural proportions, balanced post spacing, realistic headroom, and appropriately thin perimeter beams and roof components. Avoid bulky, oversized, squat, or cramped geometry. Integrate the system cleanly with the existing architecture and preserve entrances, walking clearance, and the surrounding property.",
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
     `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
     colorsDiffer
