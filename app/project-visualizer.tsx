@@ -374,6 +374,7 @@ export function ProjectVisualizer({
       depth: "",
       height: "",
     }),
+    [structureScale, setStructureScale] = useState(85),
     [addOns, setAddOns] = useState<AddOnId[]>([]),
     [frameColor, setFrameColor] = useState("Anthracite Gray"),
     [louverColor, setLouverColor] = useState("Match Frame"),
@@ -709,6 +710,7 @@ export function ProjectVisualizer({
       : displayColor(louverColor, louverCustomColor, louverCustomColorName);
   const designSpecs = {
     addOnIds: addOns,
+    structureScale,
     frameColor: resolvedFrameColor,
     louverColor: usesLouverColor(primaryId) ? resolvedLouverColor : null,
     louverColorMatchesFrame:
@@ -821,6 +823,7 @@ export function ProjectVisualizer({
         URL.revokeObjectURL(view.concept.image);
       return resetProjectViewDesign(view);
     }));
+    setStructureScale(85);
     setAddOns([]);
     setFrameColor("Anthracite Gray");
     setLouverColor("Match Frame");
@@ -942,7 +945,9 @@ export function ProjectVisualizer({
             })
           : photo.normalized,
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
-        generationPlacement = colorUpdate ? placement : insetPlacement(placement, 0.9),
+        generationPlacement = colorUpdate
+          ? placement
+          : insetPlacement(placement, structureScale / 100),
         mask = await automaticMask(targetView, generationPlacement),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
@@ -1578,6 +1583,28 @@ export function ProjectVisualizer({
                 onChange={(event) => changeMeasurement("height", event.target.value)}
               />
             </label>
+          </div>
+          <div className="structure-scale-control">
+            <div>
+              <label htmlFor="structure-scale">Structure size</label>
+              <strong>{structureScale}%</strong>
+            </div>
+            <input
+              id="structure-scale"
+              type="range"
+              min="65"
+              max="100"
+              step="5"
+              value={structureScale}
+              aria-describedby="structure-scale-help"
+              onChange={(event) => {
+                clearConcept();
+                setStructureScale(Number(event.target.value));
+              }}
+            />
+            <small id="structure-scale-help">
+              Adjust the product inside your fixed installation points. 85% is recommended.
+            </small>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>
           <ColorSwatches label="Frame Color" options={frameColors} value={frameColor} onChange={(value) => queueColorUpdate(usesLouverColor(primaryId) && louverColor === "Match Frame" ? "frame_and_matching_louvers" : "frame", () => setFrameColor(value))} />

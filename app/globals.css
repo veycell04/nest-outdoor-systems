@@ -1690,6 +1690,41 @@ button:disabled {
 .ai-step.compact {
   margin-top: 0.4rem;
 }
+.structure-scale-control {
+  margin: 1rem 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+.structure-scale-control > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.structure-scale-control label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.structure-scale-control strong {
+  color: var(--copper);
+  font-size: 0.85rem;
+}
+.structure-scale-control input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--copper);
+  cursor: pointer;
+}
+.structure-scale-control small {
+  display: block;
+  color: #5d6562;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
 .color-playground,
 .lighting-options fieldset {
   margin: 1rem 0 0;

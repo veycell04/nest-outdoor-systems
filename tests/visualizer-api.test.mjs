@@ -422,7 +422,10 @@ test("generation keeps visible points stable and uses a refined inset footprint"
   assert.ok(Math.abs(inset[0].y - 0.05) < 0.000001);
   assert.ok(Math.abs(inset[2].x - 0.95) < 0.000001);
   assert.ok(Math.abs(inset[2].y - 0.95) < 0.000001);
-  assert.match(client, /insetPlacement\(placement, 0\.9\)/);
+  assert.match(client, /insetPlacement\(placement, structureScale \/ 100\)/);
+  assert.match(client, /\[structureScale, setStructureScale\] = useState\(85\)/);
+  assert.match(client, /type="range"[\s\S]{0,120}min="65"[\s\S]{0,80}max="100"/);
+  assert.match(client, /Adjust the product inside your fixed installation points/);
   assert.match(route, /REFINED POLYGON FIT/);
   assert.match(route, /elegant, slender structural proportions/i);
 });
