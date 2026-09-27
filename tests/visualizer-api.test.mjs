@@ -408,25 +408,30 @@ test("reset design removes concepts but preserves customer photos and placement"
   assert.match(reset.status, /photo and installation area were kept/i);
 });
 
-test("generation keeps visible points stable and uses a refined inset footprint", async () => {
+test("width control preserves the long frontage and scales only project depth", async () => {
   const fs = await import("node:fs/promises"),
-    [{ insetPlacement }, client] = await Promise.all([
+    [{ scalePlacementWidth }, client] = await Promise.all([
       vite.ssrLoadModule("/app/project-visualizer.tsx"),
       fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
     ]),
     route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
-  const inset = insetPlacement([
+  const inset = scalePlacementWidth([
     { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
   ]);
-  assert.ok(Math.abs(inset[0].x - 0.075) < 0.000001);
-  assert.equal(inset[0].y, 0);
-  assert.ok(Math.abs(inset[2].x - 0.925) < 0.000001);
+  assert.equal(inset[0].x, 0);
+  assert.ok(Math.abs(inset[0].y - 0.15) < 0.000001);
+  assert.equal(inset[1].x, 1);
+  assert.ok(Math.abs(inset[1].y - 0.15) < 0.000001);
+  assert.equal(inset[2].x, 1);
   assert.equal(inset[2].y, 1);
-  assert.match(client, /insetPlacement\(placement, structureWidthScale \/ 100\)/);
+  assert.equal(inset[3].x, 0);
+  assert.equal(inset[3].y, 1);
+  assert.match(client, /scalePlacementWidth\(placement, structureWidthScale \/ 100\)/);
   assert.match(client, /\[structureWidthScale, setStructureWidthScale\] = useState\(85\)/);
   assert.match(client, /type="range"[\s\S]{0,120}min="65"[\s\S]{0,80}max="100"/);
-  assert.match(client, /Adjust only the left-to-right width/);
+  assert.match(client, /Adjust the shorter side \/ projection width/);
   assert.match(route, /REFINED WIDTH FIT/);
+  assert.match(route, /Do not shorten the storefront frontage/);
   assert.match(route, /elegant, slender structural proportions/i);
 });
 
