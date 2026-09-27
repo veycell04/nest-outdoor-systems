@@ -82,30 +82,19 @@ export function updateProjectViewState(
 ) {
   return views.map((view) => view.id === viewId ? { ...view, ...patch } : view);
 }
-export function scalePlacementWidth(
+export function insetPlacement(
   points: readonly PolygonPoint[],
   widthScale = 0.85,
 ): PolygonPoint[] {
   if (points.length !== 4) return [...points];
-  const edgeLength = (from: number, to: number) =>
-      Math.hypot(points[to].x - points[from].x, points[to].y - points[from].y),
-    horizontalPair = (edgeLength(0, 1) + edgeLength(2, 3)) / 2,
-    sidePair = (edgeLength(1, 2) + edgeLength(3, 0)) / 2,
-    [firstEdge, secondEdge] = horizontalPair >= sidePair
-      ? [[0, 1], [3, 2]]
-      : [[1, 2], [0, 3]],
-    averageY = (edge: number[]) => (points[edge[0]].y + points[edge[1]].y) / 2,
-    frontEdge = averageY(firstEdge) >= averageY(secondEdge) ? firstEdge : secondEdge,
-    rearEdge = frontEdge === firstEdge ? secondEdge : firstEdge,
-    scaled = points.map((point) => ({ ...point }));
-  rearEdge.forEach((pointIndex, position) => {
-    const front = points[frontEdge[position]], rear = points[pointIndex];
-    scaled[pointIndex] = {
-      x: front.x + (rear.x - front.x) * widthScale,
-      y: front.y + (rear.y - front.y) * widthScale,
-    };
-  });
-  return scaled;
+  const center = points.reduce(
+    (total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }),
+    { x: 0, y: 0 },
+  );
+  return points.map((point) => ({
+    x: center.x + (point.x - center.x) * widthScale,
+    y: point.y,
+  }));
 }
 export function resetProjectViewDesign(view: ProjectView): ProjectView {
   return {
@@ -958,7 +947,7 @@ export function ProjectVisualizer({
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
         generationPlacement = colorUpdate
           ? placement
-          : scalePlacementWidth(placement, structureWidthScale / 100),
+          : insetPlacement(placement, structureWidthScale / 100),
         mask = await automaticMask(targetView, generationPlacement),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
@@ -1597,7 +1586,7 @@ export function ProjectVisualizer({
           </div>
           <div className="structure-scale-control">
             <div>
-              <label htmlFor="structure-width-scale">Structure width</label>
+              <label htmlFor="structure-width-scale">Horizontal structure width</label>
               <strong>{structureWidthScale}%</strong>
             </div>
             <input
@@ -1614,7 +1603,7 @@ export function ProjectVisualizer({
               }}
             />
             <small id="structure-width-scale-help">
-              Adjust the shorter side / projection width. The long marked frontage length stays unchanged.
+              Reduce the left-to-right storefront span. Projection / depth stays unchanged.
             </small>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>
