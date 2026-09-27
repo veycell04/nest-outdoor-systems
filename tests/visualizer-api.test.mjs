@@ -417,21 +417,22 @@ test("width control preserves the long frontage and scales only project depth", 
     route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
   const inset = scalePlacementDepth([
     { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
-  ]);
+  ], 0.3);
   assert.equal(inset[0].x, 0);
-  assert.ok(Math.abs(inset[0].y - 0.15) < 0.000001);
+  assert.equal(inset[0].y, 0);
   assert.equal(inset[1].x, 1);
-  assert.ok(Math.abs(inset[1].y - 0.15) < 0.000001);
+  assert.equal(inset[1].y, 0);
   assert.equal(inset[2].x, 1);
-  assert.equal(inset[2].y, 1);
+  assert.ok(Math.abs(inset[2].y - 0.3) < 0.000001);
   assert.equal(inset[3].x, 0);
-  assert.equal(inset[3].y, 1);
+  assert.ok(Math.abs(inset[3].y - 0.3) < 0.000001);
   assert.match(client, /scalePlacementDepth\(placement, structureDepthScale \/ 100\)/);
   assert.match(client, /\[structureDepthScale, setStructureDepthScale\] = useState\(85\)/);
-  assert.match(client, /type="range"[\s\S]{0,120}min="30"[\s\S]{0,80}max="100"/);
+  assert.match(client, /type="range"[\s\S]{0,120}min="10"[\s\S]{0,80}max="100"/);
   assert.match(client, /Changes only the front-to-back depth/);
   assert.match(route, /DEPTH \/ PROJECTION FIT/);
   assert.match(route, /Never shorten, narrow, center-inset/);
+  assert.match(route, /At 10% the result must look extremely shallow/);
   assert.match(route, /elegant, slender structural proportions/i);
 });
 

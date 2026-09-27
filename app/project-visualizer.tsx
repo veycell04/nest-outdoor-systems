@@ -98,11 +98,11 @@ export function scalePlacementDepth(
     frontEdge = averageY(firstEdge) >= averageY(secondEdge) ? firstEdge : secondEdge,
     rearEdge = frontEdge === firstEdge ? secondEdge : firstEdge,
     scaled = points.map((point) => ({ ...point }));
-  rearEdge.forEach((pointIndex, position) => {
-    const front = points[frontEdge[position]], rear = points[pointIndex];
+  frontEdge.forEach((pointIndex, position) => {
+    const front = points[pointIndex], rear = points[rearEdge[position]];
     scaled[pointIndex] = {
-      x: front.x + (rear.x - front.x) * depthScale,
-      y: front.y + (rear.y - front.y) * depthScale,
+      x: rear.x + (front.x - rear.x) * depthScale,
+      y: rear.y + (front.y - rear.y) * depthScale,
     };
   });
   return scaled;
@@ -1603,7 +1603,7 @@ export function ProjectVisualizer({
             <input
               id="structure-depth-scale"
               type="range"
-              min="30"
+              min="10"
               max="100"
               step="5"
               value={structureDepthScale}

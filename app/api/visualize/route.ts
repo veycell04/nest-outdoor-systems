@@ -364,6 +364,10 @@ export async function POST(request: Request) {
     viewLabel = cleanText(input.viewLabel, 40) || cleanText(specs.viewLabel, 40) || "Front View",
     sharedDesignFingerprint = cleanText(input.sharedDesignFingerprint, 100) || cleanText(specs.sharedDesignFingerprint, 100) || "single-view-legacy",
     generationOrder = Number.isInteger(specs.generationOrder) ? Number(specs.generationOrder) : 1,
+    structureDepthScale = Math.min(
+      100,
+      Math.max(10, Number(specs.structureDepthScale) || 85),
+    ),
     options = selectedAddOns.map((id) => addOnLabels[id]),
     measurements =
       typeof specs.measurements === "object" && specs.measurements
@@ -394,6 +398,7 @@ export async function POST(request: Request) {
           projectId,
           viewId,
           sharedDesignFingerprint,
+          structureDepthScale,
         },
     cacheKey = generationCacheKey(photoBytes, maskBytes, cacheConfiguration),
     cachedPath = `visualizer/${owner}/cache/${cacheKey}/result.jpg`;
@@ -540,7 +545,7 @@ export async function POST(request: Request) {
     `Four-corner installation polygon coordinates: ${JSON.stringify(placement)}.`,
     editMode === "color_update"
       ? "Keep the existing structure size and footprint exactly unchanged."
-      : "DEPTH / PROJECTION FIT: The supplied polygon preserves the customer's complete left-to-right frontage length while reducing only the front-to-back depth / projection. Keep both frontage endpoints and the full long front-edge span exactly as marked. Never shorten, narrow, center-inset, or otherwise change the left-to-right length. Keep the front edge fixed and align the rear edge and side boundaries to the supplied reduced-depth coordinates. Do not expand the structure back toward the original depth. Use elegant, slender structural proportions, balanced post spacing, realistic headroom, and appropriately thin perimeter beams and roof components. Avoid bulky, oversized, squat, or cramped geometry. Integrate the system cleanly with the existing architecture and preserve entrances, walking clearance, and the surrounding property.",
+      : `DEPTH / PROJECTION FIT: Generate a deliberately shallow structure at exactly ${structureDepthScale}% of the customer's marked front-to-back depth / projection. The wall-mounted rear edge stays fixed, and the outside front edge moves toward the building as the percentage decreases. The supplied polygon already encodes this reduced depth. Preserve the customer's complete left-to-right frontage length: keep both frontage endpoints and the full long edge span exactly as marked. Never shorten, narrow, center-inset, or otherwise change the left-to-right length. Do not expand the structure beyond the supplied reduced-depth mask even if the product reference is deeper. At 10% the result must look extremely shallow; at 30% it must use less than one-third of the original projection. Use elegant, slender structural proportions, balanced post spacing, realistic headroom, and appropriately thin perimeter beams and roof components. Avoid bulky, oversized, squat, or cramped geometry. Integrate the system cleanly with the existing architecture and preserve entrances, walking clearance, and the surrounding property.`,
     `Use every product reference only for construction, materials, finish, and proportions. Never copy, composite, recreate, or return any reference-image property or background.`,
     `STRICT COLOR ZONES: Apply frame color ${frameColor} only to posts, columns, perimeter beams, gutters, and structural rails. Apply louver or roof color ${louverColor || "not applicable"} only to louver blades or moving roof panels. Apply ZIP fabric color ${zipFabricColor || "not applicable"} only to screen fabric; every ZIP cassette and guide rail must use the frame color ${frameColor}. Apply awning, PVC, or other fabric color ${fabricColor || "not applicable"} only to fabric or membrane surfaces. Apply glass-system frame color ${glassSystemColor || "not applicable"} only to the selected glass enclosure's frames, rails, and mullions; keep glass panes transparent and natural. Do not spread any component color into another material zone.`,
     colorsDiffer
