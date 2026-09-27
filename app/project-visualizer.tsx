@@ -82,9 +82,9 @@ export function updateProjectViewState(
 ) {
   return views.map((view) => view.id === viewId ? { ...view, ...patch } : view);
 }
-export function scalePlacementWidth(
+export function scalePlacementDepth(
   points: readonly PolygonPoint[],
-  widthScale = 0.85,
+  depthScale = 0.85,
 ): PolygonPoint[] {
   if (points.length !== 4) return [...points];
   const edgeLength = (from: number, to: number) =>
@@ -101,8 +101,8 @@ export function scalePlacementWidth(
   rearEdge.forEach((pointIndex, position) => {
     const front = points[frontEdge[position]], rear = points[pointIndex];
     scaled[pointIndex] = {
-      x: front.x + (rear.x - front.x) * widthScale,
-      y: front.y + (rear.y - front.y) * widthScale,
+      x: front.x + (rear.x - front.x) * depthScale,
+      y: front.y + (rear.y - front.y) * depthScale,
     };
   });
   return scaled;
@@ -385,7 +385,7 @@ export function ProjectVisualizer({
       depth: "",
       height: "",
     }),
-    [structureWidthScale, setStructureWidthScale] = useState(85),
+    [structureDepthScale, setStructureDepthScale] = useState(85),
     [addOns, setAddOns] = useState<AddOnId[]>([]),
     [frameColor, setFrameColor] = useState("Anthracite Gray"),
     [louverColor, setLouverColor] = useState("Match Frame"),
@@ -721,7 +721,7 @@ export function ProjectVisualizer({
       : displayColor(louverColor, louverCustomColor, louverCustomColorName);
   const designSpecs = {
     addOnIds: addOns,
-    structureWidthScale,
+    structureDepthScale,
     frameColor: resolvedFrameColor,
     louverColor: usesLouverColor(primaryId) ? resolvedLouverColor : null,
     louverColorMatchesFrame:
@@ -958,7 +958,7 @@ export function ProjectVisualizer({
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
         generationPlacement = colorUpdate
           ? placement
-          : scalePlacementWidth(placement, structureWidthScale / 100),
+          : scalePlacementDepth(placement, structureDepthScale / 100),
         mask = await automaticMask(targetView, generationPlacement),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
@@ -1597,24 +1597,24 @@ export function ProjectVisualizer({
           </div>
           <div className="structure-scale-control">
             <div>
-              <label htmlFor="structure-width-scale">Structure width</label>
-              <strong>{structureWidthScale}%</strong>
+              <label htmlFor="structure-depth-scale">Depth / projection</label>
+              <strong>{structureDepthScale}%</strong>
             </div>
             <input
-              id="structure-width-scale"
+              id="structure-depth-scale"
               type="range"
-              min="65"
+              min="30"
               max="100"
               step="5"
-              value={structureWidthScale}
-              aria-describedby="structure-width-scale-help"
+              value={structureDepthScale}
+              aria-describedby="structure-depth-scale-help"
               onChange={(event) => {
                 clearConcept();
-                setStructureWidthScale(Number(event.target.value));
+                setStructureDepthScale(Number(event.target.value));
               }}
             />
-            <small id="structure-width-scale-help">
-              Adjust the shorter side / projection width. The long marked frontage length stays unchanged.
+            <small id="structure-depth-scale-help">
+              Changes only the front-to-back depth. The full left-to-right length stays exactly as marked.
             </small>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>

@@ -410,12 +410,12 @@ test("reset design removes concepts but preserves customer photos and placement"
 
 test("width control preserves the long frontage and scales only project depth", async () => {
   const fs = await import("node:fs/promises"),
-    [{ scalePlacementWidth }, client] = await Promise.all([
+    [{ scalePlacementDepth }, client] = await Promise.all([
       vite.ssrLoadModule("/app/project-visualizer.tsx"),
       fs.readFile(new URL("../app/project-visualizer.tsx", import.meta.url), "utf8"),
     ]),
     route = await fs.readFile(new URL("../app/api/visualize/route.ts", import.meta.url), "utf8");
-  const inset = scalePlacementWidth([
+  const inset = scalePlacementDepth([
     { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
   ]);
   assert.equal(inset[0].x, 0);
@@ -426,12 +426,12 @@ test("width control preserves the long frontage and scales only project depth", 
   assert.equal(inset[2].y, 1);
   assert.equal(inset[3].x, 0);
   assert.equal(inset[3].y, 1);
-  assert.match(client, /scalePlacementWidth\(placement, structureWidthScale \/ 100\)/);
-  assert.match(client, /\[structureWidthScale, setStructureWidthScale\] = useState\(85\)/);
-  assert.match(client, /type="range"[\s\S]{0,120}min="65"[\s\S]{0,80}max="100"/);
-  assert.match(client, /Adjust the shorter side \/ projection width/);
-  assert.match(route, /REFINED WIDTH FIT/);
-  assert.match(route, /Do not shorten the storefront frontage/);
+  assert.match(client, /scalePlacementDepth\(placement, structureDepthScale \/ 100\)/);
+  assert.match(client, /\[structureDepthScale, setStructureDepthScale\] = useState\(85\)/);
+  assert.match(client, /type="range"[\s\S]{0,120}min="30"[\s\S]{0,80}max="100"/);
+  assert.match(client, /Changes only the front-to-back depth/);
+  assert.match(route, /DEPTH \/ PROJECTION FIT/);
+  assert.match(route, /Never shorten, narrow, center-inset/);
   assert.match(route, /elegant, slender structural proportions/i);
 });
 
