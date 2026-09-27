@@ -84,7 +84,7 @@ export function updateProjectViewState(
 }
 export function insetPlacement(
   points: readonly PolygonPoint[],
-  scale = 0.9,
+  widthScale = 0.85,
 ): PolygonPoint[] {
   if (points.length !== 4) return [...points];
   const center = points.reduce(
@@ -92,8 +92,8 @@ export function insetPlacement(
     { x: 0, y: 0 },
   );
   return points.map((point) => ({
-    x: center.x + (point.x - center.x) * scale,
-    y: center.y + (point.y - center.y) * scale,
+    x: center.x + (point.x - center.x) * widthScale,
+    y: point.y,
   }));
 }
 export function resetProjectViewDesign(view: ProjectView): ProjectView {
@@ -374,7 +374,7 @@ export function ProjectVisualizer({
       depth: "",
       height: "",
     }),
-    [structureScale, setStructureScale] = useState(85),
+    [structureWidthScale, setStructureWidthScale] = useState(85),
     [addOns, setAddOns] = useState<AddOnId[]>([]),
     [frameColor, setFrameColor] = useState("Anthracite Gray"),
     [louverColor, setLouverColor] = useState("Match Frame"),
@@ -710,7 +710,7 @@ export function ProjectVisualizer({
       : displayColor(louverColor, louverCustomColor, louverCustomColorName);
   const designSpecs = {
     addOnIds: addOns,
-    structureScale,
+    structureWidthScale,
     frameColor: resolvedFrameColor,
     louverColor: usesLouverColor(primaryId) ? resolvedLouverColor : null,
     louverColorMatchesFrame:
@@ -823,7 +823,7 @@ export function ProjectVisualizer({
         URL.revokeObjectURL(view.concept.image);
       return resetProjectViewDesign(view);
     }));
-    setStructureScale(85);
+    setStructureWidthScale(85);
     setAddOns([]);
     setFrameColor("Anthracite Gray");
     setLouverColor("Match Frame");
@@ -947,7 +947,7 @@ export function ProjectVisualizer({
         editSourceHash = colorUpdate ? await hashBlob(editSource) : photo.hash,
         generationPlacement = colorUpdate
           ? placement
-          : insetPlacement(placement, structureScale / 100),
+          : insetPlacement(placement, structureWidthScale / 100),
         mask = await automaticMask(targetView, generationPlacement),
         diagnostic = new FormData();
       diagnostic.append("photo", editSource, "project.jpg");
@@ -1586,24 +1586,24 @@ export function ProjectVisualizer({
           </div>
           <div className="structure-scale-control">
             <div>
-              <label htmlFor="structure-scale">Structure size</label>
-              <strong>{structureScale}%</strong>
+              <label htmlFor="structure-width-scale">Structure width</label>
+              <strong>{structureWidthScale}%</strong>
             </div>
             <input
-              id="structure-scale"
+              id="structure-width-scale"
               type="range"
               min="65"
               max="100"
               step="5"
-              value={structureScale}
-              aria-describedby="structure-scale-help"
+              value={structureWidthScale}
+              aria-describedby="structure-width-scale-help"
               onChange={(event) => {
                 clearConcept();
-                setStructureScale(Number(event.target.value));
+                setStructureWidthScale(Number(event.target.value));
               }}
             />
-            <small id="structure-scale-help">
-              Adjust the product inside your fixed installation points. 85% is recommended.
+            <small id="structure-width-scale-help">
+              Adjust only the left-to-right width. The marked length and depth stay unchanged.
             </small>
           </div>
           <div className="ai-step compact"><span>05</span><div><strong>Colors & lighting</strong><small>Preferences are confirmed during consultation.</small></div></div>

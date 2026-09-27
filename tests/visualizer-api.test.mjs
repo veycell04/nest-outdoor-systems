@@ -418,15 +418,15 @@ test("generation keeps visible points stable and uses a refined inset footprint"
   const inset = insetPlacement([
     { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 },
   ]);
-  assert.ok(Math.abs(inset[0].x - 0.05) < 0.000001);
-  assert.ok(Math.abs(inset[0].y - 0.05) < 0.000001);
-  assert.ok(Math.abs(inset[2].x - 0.95) < 0.000001);
-  assert.ok(Math.abs(inset[2].y - 0.95) < 0.000001);
-  assert.match(client, /insetPlacement\(placement, structureScale \/ 100\)/);
-  assert.match(client, /\[structureScale, setStructureScale\] = useState\(85\)/);
+  assert.ok(Math.abs(inset[0].x - 0.075) < 0.000001);
+  assert.equal(inset[0].y, 0);
+  assert.ok(Math.abs(inset[2].x - 0.925) < 0.000001);
+  assert.equal(inset[2].y, 1);
+  assert.match(client, /insetPlacement\(placement, structureWidthScale \/ 100\)/);
+  assert.match(client, /\[structureWidthScale, setStructureWidthScale\] = useState\(85\)/);
   assert.match(client, /type="range"[\s\S]{0,120}min="65"[\s\S]{0,80}max="100"/);
-  assert.match(client, /Adjust the product inside your fixed installation points/);
-  assert.match(route, /REFINED POLYGON FIT/);
+  assert.match(client, /Adjust only the left-to-right width/);
+  assert.match(route, /REFINED WIDTH FIT/);
   assert.match(route, /elegant, slender structural proportions/i);
 });
 
